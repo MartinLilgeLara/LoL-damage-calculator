@@ -4,6 +4,7 @@ export interface ChampionBaseStats {
     hp:number;
     hpPerLevel:number;
     armor:number;
+    armorPerLevel:number;
     magicResistance:number;
     mrPerLevel:number;
     baseAd:number;
@@ -12,21 +13,37 @@ export interface ChampionBaseStats {
     asPerLevel:number;
 }
 
-export type StatKey =
+export type ItemStatKey =
+    | 'ad'
+    | 'ap'
+    | 'armor'
+    | 'mr'
+    | 'hp'
+    | 'lethality'
+    | 'flatMagicPen'
+    | 'percentArmorPen'
+    | 'percentMagicPen'
+    | 'haste';
+
+export type ScalingAttribute =
     | 'totalAd'
     | 'bonusAd'
     | 'baseAd'
     | 'ap'
-    | 'bonusHp'
-    | 'totalHp'
     | 'armor'
+    | 'bonusArmor'
+    | 'mr'
+    | 'bonusMr'
+    | 'totalHp'
+    | 'bonusHp'
     | 'targetMaxHp'
     | 'targetCurrentHp';
 
 export interface ScalingRatio {
-    attribute:StatKey;
+    attribute:ScalingAttribute;
     ratio: number[];
 }
+
 
 export interface SkillStage {
     id:string;
@@ -34,6 +51,9 @@ export interface SkillStage {
     damageType:DamageType;
     baseDamage:number[];
     scalings:ScalingRatio[];
+    isOverTime?: boolean;
+    durationSeconds?:number;
+    tickInterval?:number;
 }
 
 export interface Skill{
@@ -46,7 +66,8 @@ export interface Skill{
 export interface Item {
     id:string;
     name:string;
-    stats:Partial<Record<StatKey,number>>;
+    cost:number;
+    stats:Partial<Record<ItemStatKey,number>>;
     uniquePassive?:{
         name:string;
         description:string;
@@ -58,5 +79,22 @@ export interface Champion {
     name:string;
     baseStats:ChampionBaseStats;
     skills: Skill[]
+}
+
+export interface ComputedUnitStats {
+    level:number;
+    baseHp:number;
+    bonusHp:number;
+    totalHp:number;
+    baseAd:number;
+    bonusAd:number;
+    totalAd:number;
+    ap:number;
+    magicResistance:number;
+    armor:number;
+    lethality:number;
+    flatMagicPen:number;
+    percentArmorPen:number;
+    percentMagicPen:number;
 }
 
