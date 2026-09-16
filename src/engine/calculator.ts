@@ -13,24 +13,47 @@ export function calculateEffectiveDamage(
     const scaling = stage.scalings.reduce((sum, s) => {
         const coeff = s.ratio[rankIdx] ?? s.ratio[0] ?? 0;
         switch (s.attribute) {
-            case 'totalAd': return sum + attacker.totalAd * coeff;
-            case 'bonusAd': return sum + attacker.bonusAd * coeff;
-            case 'baseAd': return sum + attacker.baseAd * coeff;
-            case 'ap': return sum + attacker.ap * coeff;
-            case 'totalHp': return sum + attacker.totalHp * coeff;
-            case 'bonusHp': return sum + attacker.bonusHp * coeff;
-            case 'targetMaxHp': return sum + target.totalHp * coeff;
-            default: return sum;
+            case 'totalAd':
+                return sum + attacker.totalAd * coeff;
+            case 'bonusAd':
+                return sum + attacker.bonusAd * coeff;
+            case 'baseAd':
+                return sum + attacker.baseAd * coeff;
+            case 'ap':
+                return sum + attacker.ap * coeff;
+            case 'totalHp':
+                return sum + attacker.totalHp * coeff;
+            case 'bonusHp':
+                return sum + attacker.bonusHp * coeff;
+            case 'targetMaxHp':
+                return sum + target.totalHp * coeff;
+            case 'targetCurrentHp':
+                return sum + target.totalHp * coeff;
+            default:
+                return sum;
         }
     }, 0);
     const rawDamage = base + scaling;
     let effectiveDamage = rawDamage;
-    if (stage.damageType === 'physical'){
-        effectiveDamage = rawDamage * (100 / (100 + Math.max(0, target.armor)));
-    }else if (stage.damageType === 'magic'){
-        effectiveDamage = rawDamage * (100 / (100 + Math.max(0,target.magicResistance)));
-    }else if (stage.damageType === 'true'){
-        effectiveDamage = rawDamage
+    if (stage.damageType === 'physical') {
+        if (target.armor >= 0) {
+            const armorAfterPercentPen = target.armor * (1 - attacker.percentArmorPen / 100)
+            const effectiveArmor = Math.max(0, armorAfterPercentPen - attacker.lethality)
+            effectiveDamage = rawDamage * (100 / (100 + effectiveArmor));
+        } else {
+            effectiveDamage = rawDamage * (2 - 100 / (100 - target.armor))
+        }
+    } else if (stage.damageType === 'magic'){
+        if (target.magicResistance >= 0) {
+        const mrAfterPercentPen = target.magicResistance * (1 - attacker.percentMagicPen / 100);
+        const effectiveMr = Math.max(0, mrAfterPercentPen - attacker.flatMagicPen);
+        effectiveDamage = rawDamage * (100 / (100 + effectiveMr));
+        } else {
+            effectiveDamage = rawDamage * (2 - 100 / (100 - target.magicResistance));
+        }
+    }
+    else if (stage.damageType === 'true'){
+        effectiveDamage = rawDamage;
     }
     return {
         rawDamage: Math.round(rawDamage),
