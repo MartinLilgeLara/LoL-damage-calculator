@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { HealthBar } from './components/Combat/HealthBar';
 import { mockChampions, mockItems } from './data/mockChampions';
 import { computeUnitStats } from './engine/calculator';
 import type { Item } from './types/game';
@@ -46,6 +47,25 @@ export default function App() {
     setSkillRanks((prev) => ({ ...prev, [key]: rank }));
   };
 
+    // Estado de vida atual do alvo
+    const [targetCurrentHp, setTargetCurrentHp] = useState<number>(targetStats.totalHp);
+
+// Sincroniza se o alvo mudar de nível ou trocar de itens
+    useEffect(() => {
+        setTargetCurrentHp(targetStats.totalHp);
+    }, [targetStats.totalHp]);
+
+// Handlers de dano e reset
+    const handleApplyDamage = (amount: number) => {
+        setTargetCurrentHp((prev) => Math.max(0, prev - amount));
+    };
+
+    const handleResetHp = () => {
+        setTargetCurrentHp(targetStats.totalHp);
+    };
+
+
+
   return (
       <div className="min-h-screen bg-slate-950 text-slate-100 p-6 flex flex-col items-center">
         <header className="max-w-6xl w-full mb-8">
@@ -56,7 +76,7 @@ export default function App() {
         </header>
 
         {/* Grid Principal: Atacante e Alvo */}
-        <div className="max-w-6xl w-full grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          <div className="max-w-6xl w-full grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
           <ChampionPanel
               role="attacker"
               selectedChampionId={attackerChampionId}
@@ -83,9 +103,17 @@ export default function App() {
               onItemChange={(idx, id) => handleItemSlotChange(false, idx, id)}
           />
         </div>
+          <div className="max-w-6xl w-full mb-8">
+              <HealthBar
+                  currentHp={targetCurrentHp}
+                  maxHp={targetStats.totalHp}
+                  onReset={handleResetHp}
+              />
+          </div>
+
 
         {/* Lista de Habilidades */}
-        <section className="max-w-6xl w-full space-y-4">
+          <section className="max-w-6xl w-full space-y-4">
           <h3 className="text-xl font-bold text-slate-200">Skills ({attackerChamp.name})</h3>
           {attackerChamp.skills.map((skill) => (
               <SkillCard
@@ -95,6 +123,7 @@ export default function App() {
                   attackerStats={attackerStats}
                   targetStats={targetStats}
                   onRankChange={(rank) => handleRankChange(skill.key, rank)}
+                  onCast={handleApplyDamage}
               />
           ))}
         </section>
