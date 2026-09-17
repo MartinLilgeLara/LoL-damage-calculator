@@ -4,6 +4,7 @@ import { computeUnitStats } from './engine/calculator';
 import type { Item } from './types/game';
 import { ChampionPanel } from './components/ChampionPanel/ChampionPanel';
 import { SkillCard } from './components/Skills/SkillCard';
+import { ItemPassivesSection} from "./components/Items/ItemPassiveSection.tsx";
 
 export default function App() {
   // Estado do Atacante
@@ -97,6 +98,16 @@ export default function App() {
               />
           ))}
         </section>
+        {/* Lista de Habilidades */}
+        <section className="max-w-6xl w-full space-y-4">
+          {/* ... mapeamento das skills ... */}
+        </section>
+
+        {/* Passivas de Dano de Itens */}
+        <ItemPassivesSection
+            items={attackerItems}
+            attackerStats={attackerStats}
+            targetStats={targetStats}/>
       </div>
   );
 }

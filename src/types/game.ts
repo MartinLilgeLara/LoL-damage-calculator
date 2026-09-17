@@ -63,16 +63,7 @@ export interface Skill{
     stages:SkillStage[]
 }
 
-export interface Item {
-    id:string;
-    name:string;
-    cost:number;
-    stats:Partial<Record<ItemStatKey,number>>;
-    uniquePassive?:{
-        name:string;
-        description:string;
-    };
-}
+
 
 export interface Champion {
     id:string;
@@ -98,3 +89,47 @@ export interface ComputedUnitStats {
     percentMagicPen:number;
 }
 
+export interface StatMutiplierPassive {
+    id:string;
+    name:string;
+    category:'stat_multiplier';
+    stat:'ap' | 'bonusAd' | 'totalHp' | 'armor' | 'magicResistance';
+    percent: number;
+    unique?:boolean;
+}
+
+export interface ProcDamagePassive{
+    id:string;
+    name:string;
+    category:'proc_damage';
+    trigger: 'spellblade' | 'on_hit' | 'on_ability_hit';
+    baseDamage?:number;
+    scalings: ScalingRatio[];
+    damageType: DamageType;
+    cooldown?: number;
+    unique?:boolean;
+}
+export interface DotDamagePassive {
+    id:string;
+    name:string;
+    category:'dot_burn';
+    duration:number;
+    tickRate:number;
+    baseDamagePerSecond?: number;
+    scalingsPerSecond: ScalingRatio[];
+    damageType: DamageType;
+    unique?: boolean;
+}
+
+export type ItemPassive =
+    | StatMutiplierPassive
+    | ProcDamagePassive
+    | DotDamagePassive;
+
+export interface Item {
+    id:string;
+    name:string;
+    cost:number;
+    stats:Partial<Record<ItemStatKey,number>>;
+    passives?:ItemPassive[]
+}
