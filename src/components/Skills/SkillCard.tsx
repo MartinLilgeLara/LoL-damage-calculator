@@ -7,8 +7,9 @@ interface SkillCardProps {
     currentRank: number;
     attackerStats: ComputedUnitStats;
     targetStats: ComputedUnitStats;
+    attackerResource: number;
     onRankChange: (rank: number) => void;
-    onCast: (damage: number) => void;
+    onCast: (damage: number, furyCost?: number) => void;
 }
 
 export function SkillCard({
@@ -16,14 +17,27 @@ export function SkillCard({
                               currentRank,
                               attackerStats,
                               targetStats,
+                              attackerResource,
                               onRankChange,
                               onCast,
                           }: SkillCardProps) {
+    const isFuryUser = attackerStats.resourceType === 'fury';
+    const hasEmpoweredFury = isFuryUser && attackerResource >= 50;
+    const hasEmpoweredStages = skill.stages.some((s) => s.isEmpowered === true);
+    const activeStages = skill.stages.filter((stage) => {
+        if (!hasEmpoweredStages) return true;
+        if (hasEmpoweredFury) {
+            return stage.isEmpowered !== false;
+        }
+        return stage.isEmpowered !== true;
+    });
     const handleCastSkill = () => {
         const totalDamage = skill.stages.reduce((acc, stage) => {
             const calculated = calculateEffectiveDamage(stage, currentRank, attackerStats, targetStats);
             return acc + calculated.effectiveDamage;
         }, 0);
+        const furySpent = hasEmpoweredStages && hasEmpoweredFury ? 50 : 0;
+        onCast(totalDamage, furySpent);
 
         onCast(totalDamage);
     };
@@ -36,7 +50,17 @@ export function SkillCard({
                         {skill.key}
                     </span>
                     <strong className="text-base text-slate-100">{skill.name}</strong>
-
+                    {hasEmpoweredStages && (
+                        <span
+                            className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase ${
+                                hasEmpoweredFury
+                                    ? 'bg-red-950 text-red-400 border border-red-800'
+                                    : 'bg-slate-800 text-slate-400 border border-slate-700'
+                            }`}
+                        >
+              {hasEmpoweredFury ? 'Empowered (50 Fúria)' : 'Normal'}
+            </span>
+                    )}
                     <button
                         type="button"
                         onClick={handleCastSkill}

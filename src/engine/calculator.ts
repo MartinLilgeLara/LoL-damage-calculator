@@ -1,5 +1,5 @@
-import type {Champion, Item, SkillStage, ComputedUnitStats, DamageType} from "../types/game.ts";
-
+import type { Champion, Item, SkillStage, ComputedUnitStats, DamageType } from '../types/game';
+import { mitigateDamage } from './mitigation';
 
 export function calculateEffectiveDamage(
     stage: SkillStage,
@@ -26,56 +26,48 @@ export function calculateEffectiveDamage(
             case 'bonusHp':
                 return sum + attacker.bonusHp * coeff;
             case 'targetMaxHp':
-                return sum + target.totalHp * coeff;
             case 'targetCurrentHp':
                 return sum + target.totalHp * coeff;
             default:
                 return sum;
         }
     }, 0);
+
     const rawDamage = base + scaling;
-    let effectiveDamage = rawDamage;
-    if (stage.damageType === 'physical') {
-        if (target.armor >= 0) {
-            const armorAfterPercentPen = target.armor * (1 - attacker.percentArmorPen / 100)
-            const effectiveArmor = Math.max(0, armorAfterPercentPen - attacker.lethality)
-            effectiveDamage = rawDamage * (100 / (100 + effectiveArmor));
-        } else {
-            effectiveDamage = rawDamage * (2 - 100 / (100 - target.armor))
-        }
-    } else if (stage.damageType === 'magic'){
-        if (target.magicResistance >= 0) {
-        const mrAfterPercentPen = target.magicResistance * (1 - attacker.percentMagicPen / 100);
-        const effectiveMr = Math.max(0, mrAfterPercentPen - attacker.flatMagicPen);
-        effectiveDamage = rawDamage * (100 / (100 + effectiveMr));
-        } else {
-            effectiveDamage = rawDamage * (2 - 100 / (100 - target.magicResistance));
-        }
-    }
-    else if (stage.damageType === 'true'){
-        effectiveDamage = rawDamage;
-    }
-    return {
-        rawDamage: Math.round(rawDamage),
-        effectiveDamage: Math.round(effectiveDamage),
-        damageType: stage.damageType,
-    };
+
+    // Delega o cálculo de mitigação de resistências diretamente para a função pura
+    return mitigateDamage(rawDamage, stage.damageType, attacker, target);
 }
 
-export function calculateStatAtLevel(base:number, growth: number, level: number,):number{
-    if (level <=1) return base;
+export function calculateStatAtLevel(base: number, growth: number, level: number): number {
+    if (level <= 1) return base;
     const factor = (level - 1) * (0.7025 + 0.0175 * (level - 1));
     return base + growth * factor;
 }
 
-export function computeUnitStats (champion: Champion, level: number, items: (Item|null)[]): ComputedUnitStats{
+export function computeUnitStats(
+    champion: Champion,
+    level: number,
+    items: (Item | null)[]
+): ComputedUnitStats {
     const baseHp = calculateStatAtLevel(champion.baseStats.hp, champion.baseStats.hpPerLevel, level);
     const baseAd = calculateStatAtLevel(champion.baseStats.baseAd, champion.baseStats.adPerLevel, level);
-    const baseArmor =  calculateStatAtLevel(champion.baseStats.armor, champion.baseStats.armorPerLevel, level);
-    const baseMr= calculateStatAtLevel(champion.baseStats.magicResistance, champion.baseStats.mrPerLevel, level);
-
+    const baseArmor = calculateStatAtLevel(champion.baseStats.armor, champion.baseStats.armorPerLevel, level);
+    const baseMr = calculateStatAtLevel(champion.baseStats.magicResistance, champion.baseStats.mrPerLevel, level);
+    const resourceType = champion.baseStats.resourceType ?? 'none';
+    let baseResource = 0;
+    if (resourceType === 'fury') {
+        baseResource = 100;
+    } else if (resourceType === 'mana') {
+        baseResource = calculateStatAtLevel(
+            champion.baseStats.baseResource ?? 0,
+            champion.baseStats.resourcePerLevel ?? 0,
+            level
+        );
+    }
     let bonusHp = 0;
     let bonusAd = 0;
+    let bonusResource = 0;
     let ap = 0;
     let bonusArmor = 0;
     let bonusMr = 0;
@@ -84,9 +76,10 @@ export function computeUnitStats (champion: Champion, level: number, items: (Ite
     let percentArmorPen = 0;
     let percentMagicPen = 0;
 
-    for (const item of items){
-        if(!item) continue;
+    for (const item of items) {
+        if (!item) continue;
         bonusHp += item.stats.hp ?? 0;
+        bonusResource += item.stats.mana ?? 0;
         bonusAd += item.stats.ad ?? 0;
         ap += item.stats.ap ?? 0;
         bonusArmor += item.stats.armor ?? 0;
@@ -96,11 +89,16 @@ export function computeUnitStats (champion: Champion, level: number, items: (Ite
         percentArmorPen += item.stats.percentArmorPen ?? 0;
         percentMagicPen += item.stats.percentMagicPen ?? 0;
     }
-    return{
+    const maxResource = resourceType === 'fury' ? 100 : Math.round(baseResource + bonusResource);
+    return {
         level,
         baseHp: Math.round(baseHp),
         bonusHp,
         totalHp: Math.round(baseHp + bonusHp),
+        resourceType,
+        baseResource: Math.round(baseResource),
+        bonusResource: resourceType === 'fury' ? 0 : bonusResource,
+        maxResource,
         baseAd: Math.round(baseAd),
         bonusAd,
         totalAd: Math.round(baseAd + bonusAd),
@@ -112,5 +110,4 @@ export function computeUnitStats (champion: Champion, level: number, items: (Ite
         percentArmorPen,
         percentMagicPen,
     };
-
 }

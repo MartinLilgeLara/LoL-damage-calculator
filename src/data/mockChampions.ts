@@ -1,6 +1,142 @@
 import type { Champion, Item } from '../types/game';
 
 export const mockChampions: Champion[] = [
+{
+    id: 'renekton',
+    name: 'Renekton',
+    baseStats: {
+        hp: 650,
+        hpPerLevel: 99,
+        armor: 35,
+        armorPerLevel: 4.2,
+        magicResistance: 32,
+        mrPerLevel: 1.3,
+        baseAd: 69,
+        adPerLevel: 4.25,
+        atkSpeed: 0.665,
+        asPerLevel: 2.65,
+        resourceType: 'fury',
+        baseResource: 100,
+        resourcePerLevel: 0,
+    },
+    skills: [
+        {
+            key: 'Q',
+            name: 'Cull the Meek',
+            maxRank: 5,
+            stages: [
+                {
+                    id: 'renekton_q_normal',
+                    name: 'Regular Cut',
+                    damageType: 'physical',
+                    baseDamage: [65, 100, 135, 170, 205],
+                    scalings: [{ attribute: 'bonusAd', ratio: [0.8, 0.8, 0.8, 0.8, 0.8] }],
+                    isEmpowered: false,
+                },
+                {
+                    id: 'renekton_q_empowered',
+                    name: 'Empowered Cut (50+ Fury)',
+                    damageType: 'physical',
+                    baseDamage: [100, 150, 200, 250, 300],
+                    scalings: [{ attribute: 'bonusAd', ratio: [1.2, 1.2, 1.2, 1.2, 1.2] }],
+                    isEmpowered: true,
+                },
+            ],
+        },
+        {
+            key: 'W',
+            name: 'Ruthless Predator',
+            maxRank: 5,
+            stages: [
+                {
+                    id: 'renekton_w_normal_hit1',
+                    name: 'Normal (Hit 1)',
+                    damageType: 'physical',
+                    baseDamage: [5, 15, 25, 35, 45],
+                    scalings: [{ attribute: 'totalAd', ratio: [0.75, 0.75, 0.75, 0.75, 0.75] }],
+                    isEmpowered: false,
+                },
+                {
+                    id: 'renekton_w_normal_hit2',
+                    name: 'Normal (Hit 2)',
+                    damageType: 'physical',
+                    baseDamage: [5, 15, 25, 35, 45],
+                    scalings: [{ attribute: 'totalAd', ratio: [0.75, 0.75, 0.75, 0.75, 0.75] }],
+                    isEmpowered: false,
+                },
+                {
+                    id: 'renekton_w_emp_hit1',
+                    name: 'Empowered (Hit 1)',
+                    damageType: 'physical',
+                    baseDamage: [5, 15, 25, 35, 45],
+                    scalings: [{ attribute: 'totalAd', ratio: [0.75, 0.75, 0.75, 0.75, 0.75] }],
+                    isEmpowered: true,
+                },
+                {
+                    id: 'renekton_w_emp_hit2',
+                    name: 'Empowered (Hit 2)',
+                    damageType: 'physical',
+                    baseDamage: [5, 15, 25, 35, 45],
+                    scalings: [{ attribute: 'totalAd', ratio: [0.75, 0.75, 0.75, 0.75, 0.75] }],
+                    isEmpowered: true,
+                },
+                {
+                    id: 'renekton_w_emp_hit3',
+                    name: 'Empowered (Hit 3)',
+                    damageType: 'physical',
+                    baseDamage: [5, 15, 25, 35, 45],
+                    scalings: [{ attribute: 'totalAd', ratio: [0.75, 0.75, 0.75, 0.75, 0.75] }],
+                    isEmpowered: true,
+                },
+            ],
+        },
+        {
+            key: 'E',
+            name: 'Slice and Dice',
+            maxRank: 5,
+            stages: [
+                {
+                    id: 'renekton_e1_slice',
+                    name: 'Slice (First Dash)',
+                    damageType: 'physical',
+                    baseDamage: [40, 70, 100, 130, 160],
+                    scalings: [{ attribute: 'bonusAd', ratio: [0.9, 0.9, 0.9, 0.9, 0.9] }],
+                    isEmpowered: false,
+                },
+                {
+                    id: 'renekton_e2_dice',
+                    name: 'Dice (Second Dash)',
+                    damageType: 'physical',
+                    baseDamage: [40, 70, 100, 130, 160],
+                    scalings: [{ attribute: 'bonusAd', ratio: [0.9, 0.9, 0.9, 0.9, 0.9] }],
+                    isEmpowered: false,
+                },
+                {
+                    id: 'renekton_e2_empowered',
+                    name: 'Dice Empowered (50+ Fury)',
+                    damageType: 'physical',
+                    baseDamage: [70, 115, 160, 205, 250],
+                    scalings: [{ attribute: 'bonusAd', ratio: [1.35, 1.35, 1.35, 1.35, 1.35] }],
+                    isEmpowered: true,
+                },
+            ],
+        },
+        {
+            key: 'R',
+            name: 'Dominus',
+            maxRank: 3,
+            stages: [
+                {
+                    id: 'renekton_r_aura_sec',
+                    name: 'Aura Damage (per second)',
+                    damageType: 'magic',
+                    baseDamage: [60, 120, 180],
+                    scalings: [{ attribute: 'ap', ratio: [0.1, 0.1, 0.1] }],
+                },
+            ],
+        },
+    ],
+},
     {
         id: 'ahri',
         name: 'Ahri',
@@ -135,6 +271,7 @@ export const mockChampions: Champion[] = [
             adPerLevel: 4.5,
             atkSpeed: 0.625,
             asPerLevel: 3.65,
+            resourceType: 'none',
         },
         skills: [
             {
@@ -143,11 +280,39 @@ export const mockChampions: Champion[] = [
                 maxRank: 5,
                 stages: [
                     {
-                        id: 'garen-q',
-                        name: 'Strike Damage',
+                        id: 'garen_q',
+                        name: 'Empowered Strike',
                         damageType: 'physical',
                         baseDamage: [30, 60, 90, 120, 150],
-                        scalings: [{ attribute: 'totalAd', ratio: [0.5, 0.5, 0.5, 0.5, 0.5] }],
+                        scalings: [{ attribute: 'totalAd', ratio: [1.5, 1.5, 1.5, 1.5, 1.5] }],
+                    },
+                ],
+            },
+            {
+                key: 'E',
+                name: 'Judgment',
+                maxRank: 5,
+                stages: [
+                    {
+                        id: 'garen_e_spin',
+                        name: 'Spin Damage (per spin)',
+                        damageType: 'physical',
+                        baseDamage: [4, 8, 12, 16, 20],
+                        scalings: [{ attribute: 'totalAd', ratio: [0.36, 0.38, 0.4, 0.42, 0.44] }],
+                    },
+                ],
+            },
+            {
+                key: 'R',
+                name: 'Demacian Justice',
+                maxRank: 3,
+                stages: [
+                    {
+                        id: 'garen_r_execute',
+                        name: 'Execution (True Damage)',
+                        damageType: 'true',
+                        baseDamage: [150, 300, 450],
+                        scalings: [{ attribute: 'targetCurrentHp', ratio: [0.25, 0.3, 0.35] }],
                     },
                 ],
             },

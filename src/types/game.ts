@@ -11,6 +11,9 @@ export interface ChampionBaseStats {
     adPerLevel:number;
     atkSpeed:number;
     asPerLevel:number;
+    resourceType?: ResourceType;
+    baseResource?: number;
+    resourcePerLevel?: number;
 }
 
 export type ItemStatKey =
@@ -19,6 +22,7 @@ export type ItemStatKey =
     | 'armor'
     | 'mr'
     | 'hp'
+    | 'mana'
     | 'lethality'
     | 'flatMagicPen'
     | 'percentArmorPen'
@@ -36,6 +40,7 @@ export type ScalingAttribute =
     | 'bonusMr'
     | 'totalHp'
     | 'bonusHp'
+    | 'totalMana'
     | 'targetMaxHp'
     | 'targetCurrentHp';
 
@@ -51,6 +56,9 @@ export interface SkillStage {
     damageType:DamageType;
     baseDamage:number[];
     scalings:ScalingRatio[];
+    isEmpowered?: boolean;
+    furyCost?: number;
+    manaCost?: number[];
     isOverTime?: boolean;
     durationSeconds?:number;
     tickInterval?:number;
@@ -77,6 +85,10 @@ export interface ComputedUnitStats {
     baseHp:number;
     bonusHp:number;
     totalHp:number;
+    resourceType: ResourceType;
+    baseResource: number;
+    bonusResource: number;
+    maxResource: number;
     baseAd:number;
     bonusAd:number;
     totalAd:number;
