@@ -51,7 +51,7 @@ export default function App() {
         <header className="max-w-6xl w-full mb-8">
           <h1 className="text-3xl font-bold text-amber-400">LoL Damage Engine Simulator</h1>
           <p className="text-sm text-slate-400">
-            Cálculo com mitigação de armadura/MR, escalonamento por nível e slots de itens.
+            Damage calculation with resistances mitigation
           </p>
         </header>
 

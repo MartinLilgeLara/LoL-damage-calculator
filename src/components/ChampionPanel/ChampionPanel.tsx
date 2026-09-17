@@ -52,7 +52,7 @@ export function ChampionPanel({
 
             <div>
                 <label className="text-xs text-slate-400 flex justify-between">
-                    Nível: <span className={`font-mono font-bold ${titleColor}`}>{level}</span>
+                    Level: <span className={`font-mono font-bold ${titleColor}`}>{level}</span>
                 </label>
                 <input
                     type="range"

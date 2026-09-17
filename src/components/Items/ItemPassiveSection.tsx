@@ -30,7 +30,7 @@ export function ItemPassivesSection({
     if (passiveDamages.length === 0) {
         return (
             <section className="max-w-6xl w-full bg-slate-900/50 border border-slate-800/80 rounded-xl p-5 text-center text-slate-500 text-xs">
-                Nenhum item com passiva de dano equipado no atacante.
+                No passive damaging item equipped.
             </section>
         );
     }
@@ -38,9 +38,9 @@ export function ItemPassivesSection({
     return (
         <section className="max-w-6xl w-full bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4">
             <div className="border-b border-slate-800 pb-2">
-                <h3 className="text-lg font-bold text-amber-400">Passivas de Dano de Itens</h3>
+                <h3 className="text-lg font-bold text-amber-400">Items passive damages</h3>
                 <p className="text-xs text-slate-400">
-                    Dano projetado contra as resistências atuais do alvo.
+                    Damage considering current resistances.
                 </p>
             </div>
 
@@ -76,7 +76,7 @@ export function ItemPassivesSection({
 
                             <div className="flex justify-between items-baseline pt-1 border-t border-slate-900">
                 <span className="text-xs text-slate-500">
-                  Bruto: <span className="text-slate-300 font-mono">{dmg.rawDamage}</span>
+                  Raw damage: <span className="text-slate-300 font-mono">{dmg.rawDamage}</span>
                 </span>
                                 <div className="text-right">
                                     <span className="text-xs text-slate-400 mr-1">Efetivo:</span>

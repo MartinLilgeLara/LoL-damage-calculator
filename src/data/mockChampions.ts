@@ -1,4 +1,4 @@
-import type {Champion, Item} from '../types/game';
+import type { Champion, Item } from '../types/game';
 
 export const mockChampions: Champion[] = [
     {
@@ -19,22 +19,103 @@ export const mockChampions: Champion[] = [
         skills: [
             {
                 key: 'Q',
-                name: 'Orbe da Ilusão',
+                name: 'Orb of Deception',
                 maxRank: 5,
                 stages: [
                     {
                         id: 'ahri-q1',
-                        name: 'Ida',
+                        name: 'Outward Pass',
                         damageType: 'magic',
                         baseDamage: [40, 65, 90, 115, 140],
                         scalings: [{ attribute: 'ap', ratio: [0.5, 0.5, 0.5, 0.5, 0.5] }],
                     },
                     {
                         id: 'ahri-q2',
-                        name: 'Volta',
+                        name: 'Return Pass',
                         damageType: 'true',
                         baseDamage: [40, 65, 90, 115, 140],
                         scalings: [{ attribute: 'ap', ratio: [0.5, 0.5, 0.5, 0.5, 0.5] }],
+                    },
+                ],
+            },
+        ],
+    },
+    {
+        id: 'annie',
+        name: 'Annie',
+        baseStats: {
+            hp: 560,
+            hpPerLevel: 102,
+            baseAd: 50,
+            adPerLevel: 2.65,
+            armor: 19,
+            armorPerLevel: 4.7,
+            magicResistance: 30,
+            mrPerLevel: 1.3,
+            atkSpeed: 1.0,
+            asPerLevel: 0.03,
+        },
+        skills: [
+            {
+                key: 'Q',
+                name: 'Disintegrate',
+                maxRank: 5,
+                stages: [
+                    {
+                        id: 'annie_q',
+                        name: 'Disintegrate Damage',
+                        damageType: 'magic',
+                        baseDamage: [70, 105, 140, 175, 210],
+                        scalings: [{ attribute: 'ap', ratio: [0.8] }],
+                    },
+                ],
+            },
+            {
+                key: 'W',
+                name: 'Incinerate',
+                maxRank: 5,
+                stages: [
+                    {
+                        id: 'annie_w',
+                        name: 'Incinerate Damage',
+                        damageType: 'magic',
+                        baseDamage: [70, 115, 160, 205, 250],
+                        scalings: [{ attribute: 'ap', ratio: [0.85] }],
+                    },
+                ],
+            },
+            {
+                key: 'E',
+                name: 'Molten Shield',
+                maxRank: 5,
+                stages: [
+                    {
+                        id: 'annie_e_reflect',
+                        name: 'Reflected Damage (when hit)',
+                        damageType: 'magic',
+                        baseDamage: [25, 35, 45, 55, 65],
+                        scalings: [{ attribute: 'ap', ratio: [0.25] }],
+                    },
+                ],
+            },
+            {
+                key: 'R',
+                name: 'Summon: Tibbers',
+                maxRank: 3,
+                stages: [
+                    {
+                        id: 'annie_r_impact',
+                        name: 'Summon Impact Damage',
+                        damageType: 'magic',
+                        baseDamage: [150, 275, 400],
+                        scalings: [{ attribute: 'ap', ratio: [0.65] }],
+                    },
+                    {
+                        id: 'annie_r_aura',
+                        name: 'Tibbers Flame Aura (per sec)',
+                        damageType: 'magic',
+                        baseDamage: [20, 30, 40],
+                        scalings: [{ attribute: 'ap', ratio: [0.1] }],
                     },
                 ],
             },
@@ -58,12 +139,12 @@ export const mockChampions: Champion[] = [
         skills: [
             {
                 key: 'Q',
-                name: 'Acerto Decisivo',
+                name: 'Decisive Strike',
                 maxRank: 5,
                 stages: [
                     {
                         id: 'garen-q',
-                        name: 'Pancada',
+                        name: 'Strike Damage',
                         damageType: 'physical',
                         baseDamage: [30, 60, 90, 120, 150],
                         scalings: [{ attribute: 'totalAd', ratio: [0.5, 0.5, 0.5, 0.5, 0.5] }],
