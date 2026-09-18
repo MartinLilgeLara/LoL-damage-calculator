@@ -5,10 +5,14 @@ export function calculateEffectiveDamage(
     stage: SkillStage,
     rank: number,
     attacker: ComputedUnitStats,
-    target: ComputedUnitStats
+    target: ComputedUnitStats,
+    targetCurrentHp?: number
 ): { rawDamage: number; effectiveDamage: number; damageType: DamageType } {
     const rankIdx = Math.min(rank - 1, stage.baseDamage.length - 1);
     const base = stage.baseDamage[rankIdx] ?? 0;
+
+    const currentHp = targetCurrentHp !== undefined ? targetCurrentHp : target.totalHp;
+    const missingHp = Math.max(0, target.totalHp - currentHp);
 
     const scaling = stage.scalings.reduce((sum, s) => {
         const coeff = s.ratio[rankIdx] ?? s.ratio[0] ?? 0;
@@ -26,8 +30,11 @@ export function calculateEffectiveDamage(
             case 'bonusHp':
                 return sum + attacker.bonusHp * coeff;
             case 'targetMaxHp':
-            case 'targetCurrentHp':
                 return sum + target.totalHp * coeff;
+            case 'targetCurrentHp':
+                return sum + currentHp * coeff;
+            case 'targetMissingHp':
+                return sum + missingHp * coeff;
             default:
                 return sum;
         }

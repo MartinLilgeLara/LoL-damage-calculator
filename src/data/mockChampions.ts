@@ -312,7 +312,7 @@ export const mockChampions: Champion[] = [
                         name: 'Execution (True Damage)',
                         damageType: 'true',
                         baseDamage: [150, 300, 450],
-                        scalings: [{ attribute: 'targetCurrentHp', ratio: [0.25, 0.3, 0.35] }],
+                        scalings: [{ attribute: 'targetMissingHp', ratio: [0.25, 0.3, 0.35] }],
                     },
                 ],
             },

@@ -10,6 +10,7 @@ interface SkillCardProps {
     attackerResource: number;
     onRankChange: (rank: number) => void;
     onCast: (damage: number, furyCost?: number) => void;
+    targetCurrentHp?: number;
 }
 
 export function SkillCard({
@@ -18,6 +19,7 @@ export function SkillCard({
                               attackerStats,
                               targetStats,
                               attackerResource,
+                              targetCurrentHp,
                               onRankChange,
                               onCast,
                           }: SkillCardProps) {
@@ -31,7 +33,7 @@ export function SkillCard({
 
     const handleCastSkill = () => {
         const totalDamage = activeStages.reduce((acc, stage) => {
-            const calculated = calculateEffectiveDamage(stage, currentRank, attackerStats, targetStats);
+            const calculated = calculateEffectiveDamage(stage, currentRank, attackerStats, targetStats,targetCurrentHp);
             return acc + calculated.effectiveDamage;
         }, 0);
         const furySpent = hasEmpoweredStages && hasEmpoweredFury ? 50 : 0;
@@ -92,6 +94,7 @@ export function SkillCard({
                         rank={currentRank}
                         attackerStats={attackerStats}
                         targetStats={targetStats}
+                        targetCurrentHp={targetCurrentHp}
                     />
                 ))}
             </div>

@@ -6,6 +6,7 @@ interface SkillStageCardProps {
     rank: number;
     attackerStats: ComputedUnitStats;
     targetStats: ComputedUnitStats;
+    targetCurrentHp?: number;
 }
 
 export function SkillStageCard({
@@ -13,8 +14,9 @@ export function SkillStageCard({
                                    rank,
                                    attackerStats,
                                    targetStats,
+                                   targetCurrentHp,
                                }: SkillStageCardProps) {
-    const result = calculateEffectiveDamage(stage, rank, attackerStats, targetStats);
+    const result = calculateEffectiveDamage(stage, rank, attackerStats, targetStats, targetCurrentHp);
 
     const badgeColor =
         result.damageType === 'magic'

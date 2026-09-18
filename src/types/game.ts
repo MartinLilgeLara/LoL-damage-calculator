@@ -44,7 +44,8 @@ export type ScalingAttribute =
     | 'bonusHp'
     | 'totalMana'
     | 'targetMaxHp'
-    | 'targetCurrentHp';
+    | 'targetCurrentHp'
+    | 'targetMissingHp';
 
 export interface ScalingRatio {
     attribute:ScalingAttribute;

@@ -157,6 +157,7 @@ export default function App() {
                         attackerResource={attackerResource} // [NOVO]
                         onRankChange={(rank) => handleRankChange(skill.key, rank)}
                         onCast={handleApplyDamage}
+                        targetCurrentHp={targetCurrentHp}
                     />
                 ))}
             </section>
