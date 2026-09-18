@@ -1,5 +1,7 @@
 export type DamageType = 'physical' | 'magic' | 'true'
 
+export type ResourceType = 'mana' | 'fury' | 'energy' | 'none';
+
 export interface ChampionBaseStats {
     hp:number;
     hpPerLevel:number;

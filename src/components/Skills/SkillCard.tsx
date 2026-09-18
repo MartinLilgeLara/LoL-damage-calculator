@@ -26,20 +26,16 @@ export function SkillCard({
     const hasEmpoweredStages = skill.stages.some((s) => s.isEmpowered === true);
     const activeStages = skill.stages.filter((stage) => {
         if (!hasEmpoweredStages) return true;
-        if (hasEmpoweredFury) {
-            return stage.isEmpowered !== false;
-        }
-        return stage.isEmpowered !== true;
+        return hasEmpoweredFury ? stage.isEmpowered === true : stage.isEmpowered !== true;
     });
+
     const handleCastSkill = () => {
-        const totalDamage = skill.stages.reduce((acc, stage) => {
+        const totalDamage = activeStages.reduce((acc, stage) => {
             const calculated = calculateEffectiveDamage(stage, currentRank, attackerStats, targetStats);
             return acc + calculated.effectiveDamage;
         }, 0);
         const furySpent = hasEmpoweredStages && hasEmpoweredFury ? 50 : 0;
         onCast(totalDamage, furySpent);
-
-        onCast(totalDamage);
     };
 
     return (
@@ -89,7 +85,7 @@ export function SkillCard({
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-                {skill.stages.map((stage) => (
+                {activeStages.map((stage) => (
                     <SkillStageCard
                         key={stage.id}
                         stage={stage}

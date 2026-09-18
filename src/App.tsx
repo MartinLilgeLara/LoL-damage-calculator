@@ -51,6 +51,7 @@ export default function App() {
 
     // [ALTERADO]: Aplica dano e desconta fúria do atacante caso tenha custo
     const handleApplyDamage = (damageAmount: number, furyCost: number = 0) => {
+        console.log('[DEBUG DANO RECEBIDO]:', damageAmount);
         setTargetCurrentHp((prev) => Math.max(0, prev - damageAmount));
         if (furyCost > 0) {
             setAttackerResource((prev) => Math.max(0, prev - furyCost));
@@ -165,7 +166,6 @@ export default function App() {
                 items={attackerItems}
                 attackerStats={attackerStats}
                 targetStats={targetStats}
-                onCast={(dmg) => handleApplyDamage(dmg, 0)}
             />
         </div>
     );
