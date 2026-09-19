@@ -1,3 +1,4 @@
+<img width="1152" height="720" alt="Sem título" src="https://github.com/user-attachments/assets/5057393a-a0dc-4c95-83cc-8d64dd3f7c3d" />
 # ⚔️ LoL Combat Engine — Interactive Real-Time Combat Simulator
 
 An advanced, real-time League of Legends combat simulator engineered to bridge the gap between static DPS calculators and in-game combat fidelity. Built with **React**, **TypeScript**, and a custom deterministic tick-based **Game Loop**.
@@ -16,7 +17,7 @@ Most combat tools for League of Legends rely on aggregate averages or static, tu
 
 The simulator features a mirrored dual-champion HUD (e.g., Renekton vs. Garen), providing real-time visual feedback for vital statistics, active resource pools, dynamic cooldown overlays, and an interactive action bar.
 
-![Conceito da HUD de Combate](../../Desktop/Sem%20t%C3%ADtulo.png)
+![Conceito da HUD de Combate](<img width="1152" height="720" alt="Sem título" src="https://github.com/user-attachments/assets/f2a31945-5ea8-45c3-9d63-4f2c546ac834" />)
 > *Early architectural layout wireframe. The production UI incorporates active cooldown sweeps, dynamic combat floaters, and responsive state synchronization.*
 
 ---
