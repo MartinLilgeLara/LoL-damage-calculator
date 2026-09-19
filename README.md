@@ -52,3 +52,57 @@ The simulator features a mirrored dual-champion HUD (e.g., Renekton vs. Garen), 
 | **Build & Tooling** | Vite, Oxlint |
 | **Styling & HUD** | Tailwind CSS |
 | **Architecture** | Decoupled Pure Computational Engines (`engine/`) + Reactive UI State |
+
+---
+
+## 📂 Project Structure
+
+src/
+├── components/
+│   ├── ChampionPanel/     # Dynamic stats, item slots, and resource bars
+│   ├── Combat/            # Responsive health bars and combat indicators
+│   └── Skills/            # Action bar buttons, cooldown sweeps, and cards
+├── data/                  # Base champion stats, scalings, and item definitions
+├── engine/
+│   ├── calculator.ts      # Pure scaling calculations & stat aggregations
+│   ├── mitigation.ts      # Strict resistance mitigation pipeline
+│   └── gameLoop.ts        # Tick simulation engine (HP5, MP5, cooldowns, decay)
+└── types/                 # Strict domain models and combat state definitions
+
+
+---
+
+## 🚦 Getting Started
+
+### Prerequisites
+- Node.js (v18+ recommended)
+- npm or yarn
+
+### Installation
+```bash
+# Clone the repository
+git clone [https://github.com/martinlilgelara/lol-damage-calculator.git](https://github.com/martinlilgelara/lol-damage-calculator.git)
+
+# Navigate to project directory
+cd lol-damage-calculator
+
+# Install dependencies
+npm install
+
+# Start the local development server
+npm run dev
+```
+
+🗺️ Roadmap
+
+[x] Strict mitigation and resistance penetration engine.
+
+[x] Dynamic scaling for missing HP / execute abilities.
+
+[ ] Central Game Loop with variable time scaling (0.5x, 1.0x, 2.0x).
+
+[ ] Dynamic HP5 / MP5 regeneration and out-of-combat Fury decay.
+
+[ ] Active Action Bar with real-time ability cooldown counters.
+
+[ ] Item on-hit / proc state machine (Spellblade, Sunfire ticks, Liandry burns).
