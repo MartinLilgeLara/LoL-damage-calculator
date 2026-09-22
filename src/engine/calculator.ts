@@ -62,6 +62,12 @@ export function computeUnitStats(
     const baseArmor = calculateStatAtLevel(champion.baseStats.armor, champion.baseStats.armorPerLevel, level);
     const baseMr = calculateStatAtLevel(champion.baseStats.magicResistance, champion.baseStats.mrPerLevel, level);
     const resourceType = champion.baseStats.resourceType ?? 'none';
+    const baseHpRegen = calculateStatAtLevel(champion.baseStats.hpRegen, champion.baseStats.hpRegenPerLevel, level);
+    const baseResourceRegen = calculateStatAtLevel(
+        champion.baseStats.resourceRegen ?? 0,
+        champion.baseStats.resourceRegenPerLevel ?? 0,
+        level
+    );
     let baseResource = 0;
     if (resourceType === 'fury') {
         baseResource = 100;
@@ -82,7 +88,7 @@ export function computeUnitStats(
     let flatMagicPen = 0;
     let percentArmorPen = 0;
     let percentMagicPen = 0;
-
+    let haste = 0;
     for (const item of items) {
         if (!item) continue;
         bonusHp += item.stats.hp ?? 0;
@@ -95,6 +101,7 @@ export function computeUnitStats(
         flatMagicPen += item.stats.flatMagicPen ?? 0;
         percentArmorPen += item.stats.percentArmorPen ?? 0;
         percentMagicPen += item.stats.percentMagicPen ?? 0;
+        haste += item.stats.haste ?? 0;
     }
     const maxResource = resourceType === 'fury' ? 100 : Math.round(baseResource + bonusResource);
     return {
@@ -102,10 +109,12 @@ export function computeUnitStats(
         baseHp: Math.round(baseHp),
         bonusHp,
         totalHp: Math.round(baseHp + bonusHp),
+        hpRegen: Number(baseHpRegen.toFixed(2)),
         resourceType,
         baseResource: Math.round(baseResource),
         bonusResource: resourceType === 'fury' ? 0 : bonusResource,
         maxResource,
+        resourceRegen: resourceType === 'fury' || resourceType === 'none' ? 0 : Number(baseResourceRegen.toFixed(2)),
         baseAd: Math.round(baseAd),
         bonusAd,
         totalAd: Math.round(baseAd + bonusAd),
@@ -116,5 +125,7 @@ export function computeUnitStats(
         flatMagicPen,
         percentArmorPen,
         percentMagicPen,
+        atkSpeed: champion.baseStats.atkSpeed,
+        haste,
     };
 }

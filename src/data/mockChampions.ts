@@ -7,6 +7,8 @@ export const mockChampions: Champion[] = [
     baseStats: {
         hp: 650,
         hpPerLevel: 99,
+        hpRegen: 8.0,
+        hpRegenPerLevel:0.75,
         armor: 35,
         armorPerLevel: 4.2,
         magicResistance: 32,
@@ -18,11 +20,14 @@ export const mockChampions: Champion[] = [
         resourceType: 'fury',
         baseResource: 100,
         resourcePerLevel: 0,
+        resourceRegenPerLevel:0,
+        resourceRegen: 0,
     },
     skills: [
         {
             key: 'Q',
             name: 'Cull the Meek',
+            cooldown: [7, 7, 7, 7, 7],
             maxRank: 5,
             stages: [
                 {
@@ -47,6 +52,7 @@ export const mockChampions: Champion[] = [
             key: 'W',
             name: 'Ruthless Predator',
             maxRank: 5,
+            cooldown: [16,14,12,10,8],
             stages: [
                 {
                     id: 'renekton_w_normal_hit1',
@@ -94,6 +100,7 @@ export const mockChampions: Champion[] = [
             key: 'E',
             name: 'Slice and Dice',
             maxRank: 5,
+            cooldown: [16, 14, 12, 10, 8],
             stages: [
                 {
                     id: 'renekton_e1_slice',
@@ -125,6 +132,7 @@ export const mockChampions: Champion[] = [
             key: 'R',
             name: 'Dominus',
             maxRank: 3,
+            cooldown: [120, 100, 80],
             stages: [
                 {
                     id: 'renekton_r_aura_sec',
@@ -138,131 +146,13 @@ export const mockChampions: Champion[] = [
     ],
 },
     {
-        id: 'ahri',
-        name: 'Ahri',
-        baseStats: {
-            hp: 590,
-            hpPerLevel: 104,
-            armor: 21,
-            armorPerLevel: 4.7,
-            magicResistance: 30,
-            mrPerLevel: 1.3,
-            baseAd: 53,
-            adPerLevel: 3.0,
-            atkSpeed: 0.668,
-            asPerLevel: 2.2,
-        },
-        skills: [
-            {
-                key: 'Q',
-                name: 'Orb of Deception',
-                maxRank: 5,
-                stages: [
-                    {
-                        id: 'ahri-q1',
-                        name: 'Outward Pass',
-                        damageType: 'magic',
-                        baseDamage: [40, 65, 90, 115, 140],
-                        scalings: [{ attribute: 'ap', ratio: [0.5, 0.5, 0.5, 0.5, 0.5] }],
-                    },
-                    {
-                        id: 'ahri-q2',
-                        name: 'Return Pass',
-                        damageType: 'true',
-                        baseDamage: [40, 65, 90, 115, 140],
-                        scalings: [{ attribute: 'ap', ratio: [0.5, 0.5, 0.5, 0.5, 0.5] }],
-                    },
-                ],
-            },
-        ],
-    },
-    {
-        id: 'annie',
-        name: 'Annie',
-        baseStats: {
-            hp: 560,
-            hpPerLevel: 102,
-            baseAd: 50,
-            adPerLevel: 2.65,
-            armor: 19,
-            armorPerLevel: 4.7,
-            magicResistance: 30,
-            mrPerLevel: 1.3,
-            atkSpeed: 1.0,
-            asPerLevel: 0.03,
-        },
-        skills: [
-            {
-                key: 'Q',
-                name: 'Disintegrate',
-                maxRank: 5,
-                stages: [
-                    {
-                        id: 'annie_q',
-                        name: 'Disintegrate Damage',
-                        damageType: 'magic',
-                        baseDamage: [70, 105, 140, 175, 210],
-                        scalings: [{ attribute: 'ap', ratio: [0.8] }],
-                    },
-                ],
-            },
-            {
-                key: 'W',
-                name: 'Incinerate',
-                maxRank: 5,
-                stages: [
-                    {
-                        id: 'annie_w',
-                        name: 'Incinerate Damage',
-                        damageType: 'magic',
-                        baseDamage: [70, 115, 160, 205, 250],
-                        scalings: [{ attribute: 'ap', ratio: [0.85] }],
-                    },
-                ],
-            },
-            {
-                key: 'E',
-                name: 'Molten Shield',
-                maxRank: 5,
-                stages: [
-                    {
-                        id: 'annie_e_reflect',
-                        name: 'Reflected Damage (when hit)',
-                        damageType: 'magic',
-                        baseDamage: [25, 35, 45, 55, 65],
-                        scalings: [{ attribute: 'ap', ratio: [0.25] }],
-                    },
-                ],
-            },
-            {
-                key: 'R',
-                name: 'Summon: Tibbers',
-                maxRank: 3,
-                stages: [
-                    {
-                        id: 'annie_r_impact',
-                        name: 'Summon Impact Damage',
-                        damageType: 'magic',
-                        baseDamage: [150, 275, 400],
-                        scalings: [{ attribute: 'ap', ratio: [0.65] }],
-                    },
-                    {
-                        id: 'annie_r_aura',
-                        name: 'Tibbers Flame Aura (per sec)',
-                        damageType: 'magic',
-                        baseDamage: [20, 30, 40],
-                        scalings: [{ attribute: 'ap', ratio: [0.1] }],
-                    },
-                ],
-            },
-        ],
-    },
-    {
         id: 'garen',
         name: 'Garen',
         baseStats: {
             hp: 690,
             hpPerLevel: 98,
+            hpRegen:8.0,
+            hpRegenPerLevel:0.5,
             armor: 38,
             armorPerLevel: 4.2,
             magicResistance: 32,
@@ -272,12 +162,15 @@ export const mockChampions: Champion[] = [
             atkSpeed: 0.625,
             asPerLevel: 3.65,
             resourceType: 'none',
+            resourceRegen: 0,
+            resourceRegenPerLevel: 0,
         },
         skills: [
             {
                 key: 'Q',
                 name: 'Decisive Strike',
                 maxRank: 5,
+                cooldown:[8,8,8,8,8],
                 stages: [
                     {
                         id: 'garen_q',
@@ -292,6 +185,7 @@ export const mockChampions: Champion[] = [
                 key: 'E',
                 name: 'Judgment',
                 maxRank: 5,
+                cooldown:[9,9,9,9,9],
                 stages: [
                     {
                         id: 'garen_e_spin',
@@ -306,6 +200,7 @@ export const mockChampions: Champion[] = [
                 key: 'R',
                 name: 'Demacian Justice',
                 maxRank: 3,
+                cooldown:[120,100,80],
                 stages: [
                     {
                         id: 'garen_r_execute',

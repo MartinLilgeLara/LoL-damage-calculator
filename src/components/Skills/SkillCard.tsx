@@ -11,18 +11,21 @@ interface SkillCardProps {
     onRankChange: (rank: number) => void;
     onCast: (damage: number, furyCost?: number) => void;
     targetCurrentHp?: number;
+    cooldownRemaining?:number;
 }
 
 export function SkillCard({
-                              skill,
-                              currentRank,
-                              attackerStats,
-                              targetStats,
-                              attackerResource,
-                              targetCurrentHp,
-                              onRankChange,
-                              onCast,
+                          skill,
+                          currentRank,
+                          attackerStats,
+                          targetStats,
+                          attackerResource,
+                          targetCurrentHp,
+                          cooldownRemaining = 0,
+                          onRankChange,
+                          onCast,
                           }: SkillCardProps) {
+    const isOnCooldown = cooldownRemaining > 0;
     const isFuryUser = attackerStats.resourceType === 'fury';
     const hasEmpoweredFury = isFuryUser && attackerResource >= 50;
     const hasEmpoweredStages = skill.stages.some((s) => s.isEmpowered === true);
@@ -62,9 +65,13 @@ export function SkillCard({
                     <button
                         type="button"
                         onClick={handleCastSkill}
-                        className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-slate-950 font-bold text-xs rounded transition-all cursor-pointer shadow-sm ml-1"
+                        className={`px-2.5 py-1 font-bold text-xs rounded transition-all ml-1 ${
+                            isOnCooldown
+                                ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700 font-mono'
+                                : 'bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-slate-950 cursor-pointer shadow-sm'
+                        }`}
                     >
-                        Cast
+                        {isOnCooldown ? `${cooldownRemaining?.toFixed(1)}s` : 'Cast'}
                     </button>
                 </div>
 

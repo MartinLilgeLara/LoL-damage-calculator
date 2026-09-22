@@ -5,6 +5,8 @@ export type ResourceType = 'mana' | 'fury' | 'energy' | 'none';
 export interface ChampionBaseStats {
     hp:number;
     hpPerLevel:number;
+    hpRegen:number;
+    hpRegenPerLevel:number;
     armor:number;
     armorPerLevel:number;
     magicResistance:number;
@@ -16,6 +18,8 @@ export interface ChampionBaseStats {
     resourceType?: ResourceType;
     baseResource?: number;
     resourcePerLevel?: number;
+    resourceRegen?: number;
+    resourceRegenPerLevel?: number;
 }
 
 export type ItemStatKey =
@@ -29,7 +33,9 @@ export type ItemStatKey =
     | 'flatMagicPen'
     | 'percentArmorPen'
     | 'percentMagicPen'
-    | 'haste';
+    | 'haste'
+    | 'hpRegenPercent'
+    | 'manaRegenPercent';
 
 export type ScalingAttribute =
     | 'totalAd'
@@ -71,6 +77,7 @@ export interface Skill{
     key: 'Q' | 'W' | 'E' | 'R' | 'p';
     name:string;
     maxRank:number;
+    cooldown:number[];
     stages:SkillStage[]
 }
 
@@ -88,10 +95,12 @@ export interface ComputedUnitStats {
     baseHp:number;
     bonusHp:number;
     totalHp:number;
+    hpRegen:number;
     resourceType: ResourceType;
     baseResource: number;
     bonusResource: number;
     maxResource: number;
+    resourceRegen: number;
     baseAd:number;
     bonusAd:number;
     totalAd:number;
@@ -102,6 +111,8 @@ export interface ComputedUnitStats {
     flatMagicPen:number;
     percentArmorPen:number;
     percentMagicPen:number;
+    haste: number;
+    atkSpeed: number;
 }
 
 export interface StatMutiplierPassive {
