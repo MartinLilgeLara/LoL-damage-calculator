@@ -101,6 +101,8 @@ export const mockChampions: Champion[] = [
             name: 'Slice and Dice',
             maxRank: 5,
             cooldown: [16, 14, 12, 10, 8],
+            recastWindow: 4.0,
+            maxCasts: 2,
             stages: [
                 {
                     id: 'renekton_e1_slice',
@@ -108,6 +110,7 @@ export const mockChampions: Champion[] = [
                     damageType: 'physical',
                     baseDamage: [40, 70, 100, 130, 160],
                     scalings: [{ attribute: 'bonusAd', ratio: [0.9, 0.9, 0.9, 0.9, 0.9] }],
+                    castIndex: 1,
                     isEmpowered: false,
                 },
                 {
@@ -116,6 +119,7 @@ export const mockChampions: Champion[] = [
                     damageType: 'physical',
                     baseDamage: [40, 70, 100, 130, 160],
                     scalings: [{ attribute: 'bonusAd', ratio: [0.9, 0.9, 0.9, 0.9, 0.9] }],
+                    castIndex: 2,
                     isEmpowered: false,
                 },
                 {
@@ -124,6 +128,7 @@ export const mockChampions: Champion[] = [
                     damageType: 'physical',
                     baseDamage: [70, 115, 160, 205, 250],
                     scalings: [{ attribute: 'bonusAd', ratio: [1.35, 1.35, 1.35, 1.35, 1.35] }],
+                    castIndex: 2,
                     isEmpowered: true,
                 },
             ],

@@ -71,6 +71,7 @@ export interface SkillStage {
     isOverTime?: boolean;
     durationSeconds?:number;
     tickInterval?:number;
+    castIndex?: number;
 }
 
 export interface Skill{
@@ -78,10 +79,17 @@ export interface Skill{
     name:string;
     maxRank:number;
     cooldown:number[];
-    stages:SkillStage[]
+    stages:SkillStage[];
+    recastWindow?: number;
+    maxCasts?: number;
 }
 
+export interface ActiveRecastState {
+    currentCast: number;
+    windowRemaining: number;
+}
 
+export type RecastStates = Record<string, ActiveRecastState>;
 
 export interface Champion {
     id:string;

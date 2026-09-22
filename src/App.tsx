@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { mockChampions, mockItems } from './data/mockChampions';
 import { computeUnitStats } from './engine/calculator';
-import type { Item } from './types/game';
+import type { Item,RecastStates } from './types/game';
 import { ChampionPanel } from './components/ChampionPanel/ChampionPanel';
 import { SkillCard } from './components/Skills/SkillCard';
 import { ItemPassivesSection } from './components/Items/ItemPassiveSection';
 import { HealthBar } from './components/Combat/HealthBar';
 import { ResourceBar } from './components/ChampionPanel/ResourceBar';
+import { updateRecastWindows } from './engine/gameLoop';
 import {
     calculateHpRegen,
     calculateResourceTick,
@@ -16,7 +17,7 @@ import {
 } from './engine/gameLoop';
 
 export default function App() {
-    // Campeões e Itens
+    const [recasts, setRecasts] = useState<RecastStates>({});
     const [attackerChampionId, setAttackerChampionId] = useState<string>(mockChampions[0].id);
     const [attackerLevel, setAttackerLevel] = useState<number>(3);
     const [attackerItems, setAttackerItems] = useState<(Item | null)[]>(Array(6).fill(null));
@@ -92,6 +93,27 @@ export default function App() {
 
                     // 4. Tick de Cooldowns
                     setCooldowns((prev) => updateCooldowns(prev, effectiveDelta));
+                    setRecasts((prev) => {
+                        const { nextStates, expiredSkills } = updateRecastWindows(prev, effectiveDelta);
+
+                        // Se alguma janela de recast expirou, coloca a skill em cooldown imediatamente
+                        if (expiredSkills.length > 0) {
+                            setCooldowns((cds) => {
+                                const updated = { ...cds };
+                                for (const skillKey of expiredSkills) {
+                                    const skill = attackerChamp.skills.find((s) => s.key === skillKey);
+                                    if (skill?.cooldown) {
+                                        const rank = skillRanks[skillKey] || 1;
+                                        const baseCd = skill.cooldown[rank - 1] ?? skill.cooldown[0];
+                                        updated[skillKey] = calculateActualCooldown(baseCd, attackerStats.haste);
+                                    }
+                                }
+                                return updated;
+                            });
+                        }
+
+                        return nextStates;
+                    });
                 }
             }
             lastTimeRef.current = time;
@@ -113,11 +135,35 @@ export default function App() {
 
         if (skillKey) {
             const skill = attackerChamp.skills.find((s) => s.key === skillKey);
-            if (skill && skill.cooldown) {
-                const rank = skillRanks[skillKey] || 1;
-                const baseCd = skill.cooldown[rank - 1] ?? skill.cooldown[0];
-                const realCd = calculateActualCooldown(baseCd, attackerStats.haste);
-                setCooldowns((prev) => ({ ...prev, [skillKey]: realCd }));
+            if (!skill) return;
+
+            const maxCasts = skill.maxCasts ?? 1;
+            const activeRecast = recasts[skillKey];
+            const currentCast = activeRecast ? activeRecast.currentCast : 1;
+
+            if (currentCast < maxCasts && skill.recastWindow) {
+
+                setRecasts((prev) => ({
+                    ...prev,
+                    [skillKey]: {
+                        currentCast: currentCast + 1,
+                        windowRemaining: skill.recastWindow!,
+                    },
+                }));
+            } else {
+                // Último cast da habilidade: limpa o estado de recast e inicia o cooldown total
+                setRecasts((prev) => {
+                    const next = { ...prev };
+                    delete next[skillKey];
+                    return next;
+                });
+
+                if (skill.cooldown) {
+                    const rank = skillRanks[skillKey] || 1;
+                    const baseCd = skill.cooldown[rank - 1] ?? skill.cooldown[0];
+                    const realCd = calculateActualCooldown(baseCd, attackerStats.haste);
+                    setCooldowns((prev) => ({ ...prev, [skillKey]: realCd }));
+                }
             }
         }
     };
@@ -263,6 +309,8 @@ export default function App() {
                         onCast={(dmg, fury) => handleApplyDamage(dmg, fury, skill.key)}
                         targetCurrentHp={targetCurrentHp}
                         cooldownRemaining={cooldowns[skill.key] || 0}
+                        currentCast={recasts[skill.key]?.currentCast || 1}
+                        recastWindowRemaining={recasts[skill.key]?.windowRemaining || 0}
                     />
                 ))}
             </section>

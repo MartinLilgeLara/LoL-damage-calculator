@@ -1,9 +1,29 @@
-import type { ComputedUnitStats } from '../types/game';
-
+import type { ComputedUnitStats, RecastStates } from '../types/game';
 export interface CombatCooldowns {
     [skillKey: string]: number;
 }
 
+export function updateRecastWindows(
+    recastStates: RecastStates,
+    deltaSeconds: number
+): { nextStates: RecastStates; expiredSkills: string[] } {
+    const nextStates: RecastStates = {};
+    const expiredSkills: string[] = [];
+
+    for (const [key, state] of Object.entries(recastStates)) {
+        const nextTime = state.windowRemaining - deltaSeconds;
+        if (nextTime <= 0) {
+            expiredSkills.push(key);
+        } else {
+            nextStates[key] = {
+                ...state,
+                windowRemaining: nextTime,
+            };
+        }
+    }
+
+    return { nextStates, expiredSkills };
+}
 
 export function calculateHpRegen (
     currentHp:number,

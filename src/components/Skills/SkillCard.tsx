@@ -11,38 +11,70 @@ interface SkillCardProps {
     onRankChange: (rank: number) => void;
     onCast: (damage: number, furyCost?: number) => void;
     targetCurrentHp?: number;
-    cooldownRemaining?:number;
+    cooldownRemaining?: number;
+    // [MUDANÇA 1]: Novas props para suporte genérico a múltiplos casts
+    currentCast?: number;
+    recastWindowRemaining?: number;
 }
 
 export function SkillCard({
-                          skill,
-                          currentRank,
-                          attackerStats,
-                          targetStats,
-                          attackerResource,
-                          targetCurrentHp,
-                          cooldownRemaining = 0,
-                          onRankChange,
-                          onCast,
+                              skill,
+                              currentRank,
+                              attackerStats,
+                              targetStats,
+                              attackerResource,
+                              targetCurrentHp,
+                              cooldownRemaining = 0,
+                              // [MUDANÇA 2]: Valores padrão para as novas props
+                              currentCast = 1,
+                              recastWindowRemaining = 0,
+                              onRankChange,
+                              onCast,
                           }: SkillCardProps) {
     const isOnCooldown = cooldownRemaining > 0;
     const isFuryUser = attackerStats.resourceType === 'fury';
     const hasEmpoweredFury = isFuryUser && attackerResource >= 50;
-    const hasEmpoweredStages = skill.stages.some((s) => s.isEmpowered === true);
-    const activeStages = skill.stages.filter((stage) => {
+
+    // [MUDANÇA 3]: Filtra primeiro apenas os estágios do cast atual (padrão é castIndex: 1)
+    const stagesForCurrentCast = skill.stages.filter(
+        (s) => (s.castIndex ?? 1) === currentCast
+    );
+
+    // [MUDANÇA 4]: Avalia se o estágio atual tem versão empoderada por fúria
+    const hasEmpoweredStages = stagesForCurrentCast.some((s) => s.isEmpowered === true);
+    const activeStages = stagesForCurrentCast.filter((stage) => {
         if (!hasEmpoweredStages) return true;
         return hasEmpoweredFury ? stage.isEmpowered === true : stage.isEmpowered !== true;
     });
 
     const handleCastSkill = () => {
-        if(isOnCooldown) return;
+        if (isOnCooldown) return;
+
         const totalDamage = activeStages.reduce((acc, stage) => {
-            const calculated = calculateEffectiveDamage(stage, currentRank, attackerStats, targetStats,targetCurrentHp);
+            const calculated = calculateEffectiveDamage(
+                stage,
+                currentRank,
+                attackerStats,
+                targetStats,
+                targetCurrentHp
+            );
             return acc + calculated.effectiveDamage;
         }, 0);
+
+        // Só consome fúria se o estágio conjurado for empoderado
         const furySpent = hasEmpoweredStages && hasEmpoweredFury ? 50 : 0;
         onCast(totalDamage, furySpent);
     };
+
+    // [MUDANÇA 5]: Variáveis visuais de estado para recast
+    const isRecastActive = currentCast > 1;
+
+    // Rótulo dinâmico do botão
+    const buttonLabel = isOnCooldown
+        ? `${cooldownRemaining.toFixed(1)}s`
+        : isRecastActive
+            ? `Cast ${currentCast} (${recastWindowRemaining.toFixed(1)}s)`
+            : 'Cast';
 
     return (
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4">
@@ -52,6 +84,14 @@ export function SkillCard({
                         {skill.key}
                     </span>
                     <strong className="text-base text-slate-100">{skill.name}</strong>
+
+                    {/* [MUDANÇA 6]: Tag indicando janela ativa de re-cast */}
+                    {isRecastActive && (
+                        <span className="text-[10px] px-2 py-0.5 rounded font-bold uppercase bg-amber-950 text-amber-400 border border-amber-800">
+                            Fase {currentCast} ({recastWindowRemaining.toFixed(1)}s)
+                        </span>
+                    )}
+
                     {hasEmpoweredStages && (
                         <span
                             className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase ${
@@ -60,20 +100,24 @@ export function SkillCard({
                                     : 'bg-slate-800 text-slate-400 border border-slate-700'
                             }`}
                         >
-              {hasEmpoweredFury ? 'Empowered (50 Fúria)' : 'Normal'}
-            </span>
+                            {hasEmpoweredFury ? 'Empowered (50 Fúria)' : 'Normal'}
+                        </span>
                     )}
+
+                    {/* [MUDANÇA 7]: Estilização dinâmica com destaque quando está em janela de recast */}
                     <button
                         type="button"
                         disabled={isOnCooldown}
                         onClick={handleCastSkill}
                         className={`px-2.5 py-1 font-bold text-xs rounded transition-all ml-1 ${
                             isOnCooldown
-                                ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700 font-mono'
-                                : 'bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-slate-950 cursor-pointer shadow-sm'
+                                ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700 font-mono pointer-events-none'
+                                : isRecastActive
+                                    ? 'bg-amber-600 hover:bg-amber-500 text-slate-950 cursor-pointer shadow-sm animate-pulse'
+                                    : 'bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-slate-950 cursor-pointer shadow-sm'
                         }`}
                     >
-                        {isOnCooldown ? `${cooldownRemaining?.toFixed(1)}s` : 'Cast'}
+                        {buttonLabel}
                     </button>
                 </div>
 
