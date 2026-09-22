@@ -51,6 +51,8 @@ export default function App() {
     // Sincronização inicial de HP e Recursos ao trocar stats
     useEffect(() => {
         setAttackerResource(attackerStats.resourceType === 'fury' ? 0 : attackerStats.maxResource);
+        setCooldowns({ Q: 0, W: 0, E: 0, R: 0 });
+        setAttackerOutOfCombatTimer(0);
     }, [attackerChampionId, attackerStats.maxResource, attackerStats.resourceType]);
 
     useEffect(() => {
@@ -102,14 +104,13 @@ export default function App() {
 
     // Aplica dano, gasta fúria e reinicia o contador fora de combate
     const handleApplyDamage = (damageAmount: number, furyCost: number = 0, skillKey?: string) => {
-        setTargetCurrentHp((prev) => Math.max(0, prev - damageAmount));
-        setAttackerOutOfCombatTimer(0); // Entrou em combate ativo
+        setTargetCurrentHp((prev) => Math.max(0, Number((prev - damageAmount).toFixed(1))));
+        setAttackerOutOfCombatTimer(0);
 
         if (furyCost > 0) {
             setAttackerResource((prev) => Math.max(0, prev - furyCost));
         }
 
-        // Se uma habilidade foi conjurada, inicia seu cooldown ajustado por Haste
         if (skillKey) {
             const skill = attackerChamp.skills.find((s) => s.key === skillKey);
             if (skill && skill.cooldown) {

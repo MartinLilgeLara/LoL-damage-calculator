@@ -35,6 +35,7 @@ export function SkillCard({
     });
 
     const handleCastSkill = () => {
+        if(isOnCooldown) return;
         const totalDamage = activeStages.reduce((acc, stage) => {
             const calculated = calculateEffectiveDamage(stage, currentRank, attackerStats, targetStats,targetCurrentHp);
             return acc + calculated.effectiveDamage;
@@ -64,6 +65,7 @@ export function SkillCard({
                     )}
                     <button
                         type="button"
+                        disabled={isOnCooldown}
                         onClick={handleCastSkill}
                         className={`px-2.5 py-1 font-bold text-xs rounded transition-all ml-1 ${
                             isOnCooldown

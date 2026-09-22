@@ -5,7 +5,8 @@ interface HealthBarProps {
 }
 
 export function HealthBar({ currentHp, maxHp, onReset }: HealthBarProps) {
-    const hpPercent = Math.max(0, Math.min(100, (currentHp / maxHp) * 100));
+    const safeCurrentHp = Math.max(0, Math.min(currentHp, maxHp));
+    const hpPercent = maxHp > 0 ? (safeCurrentHp / maxHp) * 100 : 0;
     const thousandMarkersCount = Math.floor(maxHp / 1000);
 
     return (
@@ -13,9 +14,9 @@ export function HealthBar({ currentHp, maxHp, onReset }: HealthBarProps) {
             <div className="flex justify-between items-center text-xs">
                 <span className="font-semibold text-slate-300">Target Health</span>
                 <div className="flex items-center gap-3">
-          <span className="font-mono text-sm font-bold text-emerald-400">
-            {Math.round(currentHp)} <span className="text-slate-500 text-xs">/ {maxHp}</span>
-          </span>
+                    <span className="font-mono text-sm font-bold text-emerald-400">
+                        {Math.ceil(safeCurrentHp)} <span className="text-slate-500 text-xs">/ {maxHp}</span>
+                    </span>
                     <button
                         type="button"
                         onClick={onReset}
@@ -26,15 +27,12 @@ export function HealthBar({ currentHp, maxHp, onReset }: HealthBarProps) {
                 </div>
             </div>
 
-            {/* Barra de vida com trilho escuro */}
             <div className="relative w-full h-6 bg-slate-950 rounded border border-slate-800 overflow-hidden">
-                {/* Preenchimento dinâmico */}
                 <div
-                    className="h-full bg-gradient-to-r from-emerald-600 to-emerald-400 transition-all duration-150 ease-out"
+                    className="h-full bg-gradient-to-r from-emerald-600 to-emerald-400 transition-[width] duration-75 ease-out"
                     style={{ width: `${hpPercent}%` }}
                 />
 
-                {/* Marcadores verticais a cada 1000 de vida */}
                 {Array.from({ length: thousandMarkersCount }).map((_, i) => {
                     const markerPos = (((i + 1) * 1000) / maxHp) * 100;
                     return (
