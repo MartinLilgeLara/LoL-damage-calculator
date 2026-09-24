@@ -53,6 +53,9 @@ export const mockChampions: Champion[] = [
             name: 'Ruthless Predator',
             maxRank: 5,
             cooldown: [16,14,12,10,8],
+            resetsAttackTimer: true,
+            appliesOnHit: true,
+            empowersNextAttack: true,
             stages: [
                 {
                     id: 'renekton_w_normal_hit1',
@@ -179,6 +182,8 @@ export const mockChampions: Champion[] = [
                 name: 'Decisive Strike',
                 maxRank: 5,
                 cooldown:[8,8,8,8,8],
+                appliesOnHit: true,
+                empowersNextAttack: true,
                 stages: [
                     {
                         id: 'garen_q',

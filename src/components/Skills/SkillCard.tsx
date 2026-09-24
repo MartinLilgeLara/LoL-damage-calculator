@@ -15,6 +15,7 @@ interface SkillCardProps {
     cooldownRemaining?: number;
     currentCast?: number;
     recastWindowRemaining?: number;
+    isEmpowerActive?: boolean; // [1. DECLARADO NA INTERFACE]
 }
 
 export function SkillCard({
@@ -27,6 +28,7 @@ export function SkillCard({
                               cooldownRemaining = 0,
                               currentCast = 1,
                               recastWindowRemaining = 0,
+                              isEmpowerActive = false, // [2. DESESTRUTURADO AQUI COM DEFAULT FALSE]
                               onRankChange,
                               onCast,
                           }: SkillCardProps) {
@@ -50,7 +52,14 @@ export function SkillCard({
     });
 
     const handleCastSkill = () => {
-        if (isOnCooldown) return;
+        if (isOnCooldown || isEmpowerActive) return;
+
+        // Se a habilidade empodera o próximo auto-ataque, o dano NÃO é imediato
+        if (skill.empowersNextAttack) {
+            const furySpent = hasEmpoweredStages && hasEmpoweredFury ? 50 : 0;
+            onCast(0, furySpent);
+            return;
+        }
 
         // Filtra apenas estágios instantâneos (estágios com isOverTime rodam via gameLoop)
         const instantStages = activeStages.filter((stage) => stage.isOverTime !== true);
@@ -132,21 +141,25 @@ export function SkillCard({
 
                     <button
                         type="button"
-                        disabled={isOnCooldown}
+                        disabled={isOnCooldown || isEmpowerActive}
                         onClick={handleCastSkill}
                         className={`px-3 py-1 font-bold text-xs rounded transition-all ml-1 ${
                             isOnCooldown
                                 ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700 font-mono pointer-events-none'
-                                : isRecastActive
-                                    ? 'bg-amber-600 hover:bg-amber-500 text-slate-950 cursor-pointer shadow-sm animate-pulse'
-                                    : 'bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-slate-950 cursor-pointer shadow-sm'
+                                : isEmpowerActive
+                                    ? 'bg-amber-500/20 text-amber-300 border border-amber-500/50 cursor-default animate-pulse'
+                                    : isRecastActive
+                                        ? 'bg-amber-600 hover:bg-amber-500 text-slate-950 cursor-pointer shadow-sm animate-pulse'
+                                        : 'bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-slate-950 cursor-pointer shadow-sm'
                         }`}
                     >
                         {isOnCooldown
                             ? `${cooldownRemaining.toFixed(1)}s`
-                            : isRecastActive
-                                ? `Cast ${currentCast} (${recastWindowRemaining.toFixed(1)}s)`
-                                : 'Cast'}
+                            : isEmpowerActive
+                                ? 'Ready on Next Hit'
+                                : isRecastActive
+                                    ? `Cast ${currentCast} (${recastWindowRemaining.toFixed(1)}s)`
+                                    : 'Cast'}
                     </button>
                 </div>
 

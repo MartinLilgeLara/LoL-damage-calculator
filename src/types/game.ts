@@ -85,6 +85,9 @@ export interface Skill{
     stages:SkillStage[];
     recastWindow?: number;
     maxCasts?: number;
+    resetsAttackTimer?: boolean;
+    appliesOnHit?: boolean;
+    empowersNextAttack?: boolean;
 }
 
 export interface ActiveRecastState {
@@ -171,4 +174,12 @@ export interface Item {
     cost:number;
     stats:Partial<Record<ItemStatKey,number>>;
     passives?:ItemPassive[]
+}
+
+export interface ActiveAttackEmpower {
+    skillKey: 'Q' | 'W' | 'E' | 'R';
+    skillName: string;
+    rank: number;
+    furyCost: number;
+    durationRemaining: number; // Ex: 6s de janela ativa no LoL
 }

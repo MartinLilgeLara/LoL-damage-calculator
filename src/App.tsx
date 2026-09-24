@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
+import { mitigateDamage } from './engine/mitigation';
 import { mockChampions } from './data/mockChampions';
 import { mockItems } from './data/mockItems';
 import { computeUnitStats } from './engine/calculator';
-import type { Item,RecastStates } from './types/game';
+import type { Item,RecastStates,DamageType, ActiveAttackEmpower } from './types/game';
 import { ChampionPanel } from './components/ChampionPanel/ChampionPanel';
 import { SkillCard } from './components/Skills/SkillCard';
 import { ItemPassivesSection } from './components/Items/ItemPassiveSection';
@@ -15,7 +16,9 @@ import { CombatLog, type CombatLogEntry } from './components/Combat/CombatLog';
 import {
     calculateAttackTiming,
     calculateAutoAttackDamage,
+    getSpellbladePassive,
     type AutoAttackResult,
+    type SpellbladeBuff,
 } from './engine/autoAttack';
 import {
     calculateHpRegen,
@@ -27,7 +30,7 @@ import {
     type ActiveDotInstance,
 } from './engine/gameLoop';
 import { triggerAbilityHitItemDots } from './engine/ItemsCalculator';
-
+import { calculateEffectiveDamage } from './engine/calculator';
 
 export default function App() {
     const [combatLogs, setCombatLogs] = useState<CombatLogEntry[]>([]);
@@ -56,6 +59,15 @@ export default function App() {
 
         setCombatLogs((prev) => [newEntry, ...prev]); // Mais recentes no topo
     };
+    const [spellbladeState, setSpellbladeState] = useState<SpellbladeBuff>({
+        active: false,
+        durationRemaining: 0,
+        cooldownRemaining: 0,
+        sourceItemName: '',
+        damageType: 'physical',
+        extraDamage: 0,
+    });
+
     const [recasts, setRecasts] = useState<RecastStates>({});
     const [attackerChampionId, setAttackerChampionId] = useState<string>(mockChampions[0].id);
     const [attackerLevel, setAttackerLevel] = useState<number>(3);
@@ -64,7 +76,9 @@ export default function App() {
     const [targetChampionId, setTargetChampionId] = useState<string>(mockChampions[1].id);
     const [targetLevel, setTargetLevel] = useState<number>(3);
     const [targetItems, setTargetItems] = useState<(Item | null)[]>(Array(6).fill(null));
-
+    const [activeEmpower, setActiveEmpower] = useState<ActiveAttackEmpower | null>(null);
+    const activeEmpowerRef = useRef<ActiveAttackEmpower | null>(null);
+    activeEmpowerRef.current = activeEmpower;
     const [skillRanks, setSkillRanks] = useState<Record<string, number>>({ Q: 1, W: 1, E: 1, R: 1 });
 
     const attackerChamp = mockChampions.find((c) => c.id === attackerChampionId) || mockChampions[0];
@@ -121,7 +135,36 @@ export default function App() {
 
                 if (effectiveDelta > 0) {
                     setAttackerOutOfCombatTimer((prev) => prev + effectiveDelta);
+                    setSpellbladeState((prev) => {
+                        const nextCd = Math.max(0, prev.cooldownRemaining - effectiveDelta);
 
+                        if (!prev.active) {
+                            return { ...prev, cooldownRemaining: nextCd };
+                        }
+
+                        const nextDuration = prev.durationRemaining - effectiveDelta;
+                        if (nextDuration <= 0) {
+                            // Buff expirou sem que o ataque fosse realizado
+                            return {
+                                ...prev,
+                                active: false,
+                                durationRemaining: 0,
+                                cooldownRemaining: nextCd,
+                            };
+                        }
+
+                        return {
+                            ...prev,
+                            durationRemaining: nextDuration,
+                            cooldownRemaining: nextCd,
+                        };
+                    });
+                    // Decaimento de habilidade empoderada (expira se passar de 6s sem bater)
+                    setActiveEmpower((prev) => {
+                        if (!prev) return null;
+                        const nextDur = prev.durationRemaining - effectiveDelta;
+                        return nextDur <= 0 ? null : { ...prev, durationRemaining: nextDur };
+                    });
                     // 1. Processa DoTs usando a ref de HP mais recente
                     let frameDotDamage = 0;
                     setActiveDots((prevDots) => {
@@ -196,8 +239,10 @@ export default function App() {
                             );
                             setAttackerOutOfCombatTimer(0);
                             addCombatLog(
-                                'Basic Attack',
-                                attack.rawDamage,
+                                attack.spellbladeDamageApplied
+                                    ? `Basic Attack + ${attack.spellbladeDamageApplied.itemName}`
+                                    : 'Basic Attack',
+                                attack.rawDamage + (attack.spellbladeDamageApplied?.raw ?? 0),
                                 attack.effectiveDamage,
                                 'physical',
                                 attack.isCritical
@@ -225,28 +270,94 @@ export default function App() {
 
     // Aplica dano, gasta fúria e reinicia o contador fora de combate
     const handleApplyDamage = (damageAmount: number, furyCost: number = 0, skillKey?: string) => {
-        if (damageAmount > 0) {
-            setTargetCurrentHp((prev) => Math.max(0, Number((prev - damageAmount).toFixed(1))));
-            setAttackerOutOfCombatTimer(0);
-        }
-
-        if (furyCost > 0) {
-            setAttackerResource((prev) => Math.max(0, prev - furyCost));
-        }
+        let totalDamage = damageAmount;
+        let spellbladeConsumed = false;
 
         if (skillKey) {
             const skill = attackerChamp.skills.find((s) => s.key === skillKey);
             if (!skill) return;
+
+            // 1. MECÂNICA DE ATTACK RESET (ex: W do Renekton)
+            if (skill.resetsAttackTimer) {
+                setAttackCooldownRemaining(0);
+                setAttackWindupRemaining(0);
+                pendingAttackRef.current = null;
+                setPendingAttack(null);
+            }
+
+            // 2. MECÂNICA DE ON-HIT / SPELLBLADE NA SKILL
+            if (skill.appliesOnHit && spellbladeState.active && spellbladeState.extraDamage > 0) {
+                const extraMit = mitigateDamage(
+                    spellbladeState.extraDamage,
+                    spellbladeState.damageType,
+                    attackerStats,
+                    targetStats
+                );
+                totalDamage += extraMit.effectiveDamage;
+                spellbladeConsumed = true;
+
+                // Desativa o buff consumido
+                setSpellbladeState((prev) => ({ ...prev, active: false, durationRemaining: 0 }));
+            }
+
+            // 3. ATIVAÇÃO DE NOVO SPELLBLADE (caso não tenha acabado de consumir neste mesmo cast)
+            const spellbladeInfo = getSpellbladePassive(attackerItems, attackerStats);
+            if (spellbladeInfo && spellbladeState.cooldownRemaining <= 0 && !spellbladeConsumed) {
+                setSpellbladeState({
+                    active: true,
+                    durationRemaining: 10.0,
+                    cooldownRemaining: spellbladeInfo.cooldown,
+                    sourceItemName: spellbladeInfo.itemName,
+                    damageType: spellbladeInfo.damageType,
+                    extraDamage: spellbladeInfo.rawExtra,
+                });
+            }
+
+            // 4. HABILIDADES QUE EMPODERAM O PRÓXIMO ATAQUE (W do Renekton, Q do Garen)
+            if (skill.empowersNextAttack) {
+                const rank = skillRanks[skillKey] || 1;
+                const newEmpower: ActiveAttackEmpower = {
+                    skillKey: skill.key as 'Q' | 'W' | 'E' | 'R',
+                    skillName: skill.name,
+                    rank,
+                    furyCost,
+                    durationRemaining: 6.0, // Janela de 6s para desferir o golpe
+                };
+                activeEmpowerRef.current = newEmpower;
+                setActiveEmpower(newEmpower);
+
+                // Coloca a habilidade imediatamente em recarga
+                if (skill.cooldown) {
+                    const baseCd = skill.cooldown[rank - 1] ?? skill.cooldown[0];
+                    const realCd = calculateActualCooldown(baseCd, attackerStats.haste);
+                    setCooldowns((prev) => ({ ...prev, [skillKey]: realCd }));
+                }
+
+                addCombatLog(
+                    `${attackerChamp.name} (${skillKey}) - Buff Armado`,
+                    0,
+                    0,
+                    'physical',
+                    false
+                );
+                return; // <-- A chave que faltava fechando o bloco e retornando
+            }
+
+            // 5. REGISTRO NO COMBAT LOG PARA SKILLS DIRETAS
+            const logLabel = spellbladeConsumed
+                ? `${attackerChamp.name} (${skillKey}) + ${spellbladeState.sourceItemName}`
+                : `${attackerChamp.name} (${skillKey}) - ${skill.name}`;
+
             addCombatLog(
-                `${attackerChamp.name} (${skillKey}) - ${skill?.name ?? 'Skill'}`,
-                damageAmount, // Se quiser pode calcular o raw ou passar o damageAmount
-                damageAmount,
-                skill?.stages[0]?.damageType ?? 'physical'
+                logLabel,
+                damageAmount + (spellbladeConsumed ? spellbladeState.extraDamage : 0),
+                totalDamage,
+                skill.stages[0]?.damageType ?? 'physical'
             );
 
             const rank = skillRanks[skillKey] || 1;
 
-            // 1. DoT nativo da Habilidade (ex: R do Renekton)
+            // 6. DoT nativo da Habilidade (ex: R do Renekton)
             const dotStages = skill.stages.filter((s) => s.isOverTime === true);
             const nativeSkillDots: ActiveDotInstance[] = dotStages.map((stage) => ({
                 id: stage.id,
@@ -258,14 +369,12 @@ export default function App() {
                 timeUntilNextTick: stage.tickInterval ?? 1.0,
             }));
 
-            // 2. DoTs de Itens ativados por habilidades (ex: Liandry)
+            // 7. DoTs de Itens ativados por habilidades (ex: Liandry)
             const itemDots = triggerAbilityHitItemDots(attackerItems);
-
             const allIncomingDots = [...nativeSkillDots, ...itemDots];
 
             if (allIncomingDots.length > 0) {
                 setActiveDots((prev) => {
-                    // Remove instâncias anteriores das mesmas fontes para renovar duração
                     const filtered = prev.filter(
                         (d) => !allIncomingDots.some((incoming) => incoming.id === d.id)
                     );
@@ -273,7 +382,7 @@ export default function App() {
                 });
             }
 
-            // 3. Sistema de Recast e Cooldowns
+            // 8. Sistema de Recast e Cooldowns
             const maxCasts = skill.maxCasts ?? 1;
             const activeRecast = recasts[skillKey];
             const currentCast = activeRecast ? activeRecast.currentCast : 1;
@@ -300,8 +409,17 @@ export default function App() {
                 }
             }
         }
-    };
 
+        // Aplicação de dano na vida e gasto de recurso para magias diretas
+        if (totalDamage > 0) {
+            setTargetCurrentHp((prev) => Math.max(0, Number((prev - totalDamage).toFixed(1))));
+            setAttackerOutOfCombatTimer(0);
+        }
+
+        if (furyCost > 0) {
+            setAttackerResource((prev) => Math.max(0, prev - furyCost));
+        }
+    };
     const handleResetCombat = () => {
         handleResetHp();
         handleResetCooldowns();
@@ -309,19 +427,72 @@ export default function App() {
         setAttackerOutOfCombatTimer(0);
         setCombatLogs([]);
     };
-    const handleTriggerAutoAttack = () => {
-        // Bloqueado se ainda estiver em cooldown de ataque ou executando windup
-        if (attackCooldownRemaining > 0 || attackWindupRemaining > 0) return;
+        const handleTriggerAutoAttack = () => {
+            if (attackCooldownRemaining > 0 || attackWindupRemaining > 0) return;
 
-        const timing = calculateAttackTiming(attackerStats.atkSpeed);
-        const attackResult = calculateAutoAttackDamage(attackerStats, targetStats);
+            const timing = calculateAttackTiming(attackerStats.atkSpeed);
+            let attackResult = calculateAutoAttackDamage(attackerStats, targetStats, spellbladeState);
 
-        // Prepara o ataque pendente para conectar no fim do windup
-        pendingAttackRef.current = attackResult;
-        setPendingAttack(attackResult);
-        setAttackWindupRemaining(timing.windupTime);
-        setAttackCooldownRemaining(timing.cycleTime);
-    };
+            const currentEmpower = activeEmpowerRef.current;
+
+            // Se houver um W do Renekton ou Q do Garen armado:
+            if (currentEmpower) {
+                const skill = attackerChamp.skills.find((s) => s.key === currentEmpower.skillKey);
+                if (skill) {
+                    const isFuryUser = attackerStats.resourceType === 'fury';
+                    const hasEmpoweredFury = isFuryUser && currentEmpower.furyCost > 0;
+
+                    // Seleciona os estágios da habilidade
+                    const activeStages = skill.stages.filter((stage) => {
+                        const hasEmpoweredStages = skill.stages.some((s) => s.isEmpowered === true);
+                        if (!hasEmpoweredStages) return true;
+                        return hasEmpoweredFury ? stage.isEmpowered === true : stage.isEmpowered !== true;
+                    });
+
+                    // Soma o dano de todas as fatias do golpe (ex: os 2 ou 3 hits do W do Renekton)
+                    let skillDamageRaw = 0;
+                    let skillDamageEffective = 0;
+
+                    for (const stage of activeStages) {
+                        const res = calculateEffectiveDamage(
+                            stage,
+                            currentEmpower.rank,
+                            attackerStats,
+                            targetStats,
+                            targetCurrentHp
+                        );
+                        skillDamageRaw += res.rawDamage;
+                        skillDamageEffective += res.effectiveDamage;
+                    }
+
+                    // O ataque agora carrega o dano das fatias da habilidade
+                    attackResult = {
+                        ...attackResult,
+                        rawDamage: attackResult.rawDamage + skillDamageRaw,
+                        effectiveDamage: attackResult.effectiveDamage + skillDamageEffective,
+                    };
+
+                    // Consome a fúria caso a habilidade empoderada exigisse
+                    if (currentEmpower.furyCost > 0) {
+                        setAttackerResource((prev) => Math.max(0, prev - currentEmpower.furyCost));
+                    }
+
+                    // Desativa o buff do ataque empoderado
+                    activeEmpowerRef.current = null;
+                    setActiveEmpower(null);
+                }
+            }
+
+            // Se consumiu o Spellblade, desativa o buff imediato
+            if (spellbladeState.active) {
+                setSpellbladeState((prev) => ({ ...prev, active: false, durationRemaining: 0 }));
+            }
+
+            pendingAttackRef.current = attackResult;
+            setPendingAttack(attackResult);
+            setAttackWindupRemaining(timing.windupTime);
+            setAttackCooldownRemaining(timing.cycleTime);
+        };
     const handleItemSlotChange = (isAttacker: boolean, slotIndex: number, itemId: string) => {
         const item = mockItems.find((i) => i.id === itemId) || null;
         if (isAttacker) {
@@ -341,6 +512,14 @@ export default function App() {
         setAttackWindupRemaining(0);
         pendingAttackRef.current = null;
         setPendingAttack(null);
+        setSpellbladeState({
+            active: false,
+            durationRemaining: 0,
+            cooldownRemaining: 0,
+            sourceItemName: '',
+            damageType: 'physical',
+            extraDamage: 0,
+        });
     };
 
     const handleResetHp = () => {
@@ -463,6 +642,7 @@ export default function App() {
                     targetStats={targetStats}
                     attackWindupRemaining={attackWindupRemaining}
                     attackCooldownRemaining={attackCooldownRemaining}
+                    spellblade={spellbladeState}
                     onAttack={handleTriggerAutoAttack}
                 />
 
@@ -481,6 +661,7 @@ export default function App() {
                         cooldownRemaining={cooldowns[skill.key] || 0}
                         currentCast={recasts[skill.key]?.currentCast || 1}
                         recastWindowRemaining={recasts[skill.key]?.windowRemaining || 0}
+                        isEmpowerActive={activeEmpower?.skillKey === skill.key}
                     />
                 ))}
             </section>
