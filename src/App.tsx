@@ -18,6 +18,8 @@ import {
     processActiveDots,
     type ActiveDotInstance,
 } from './engine/gameLoop';
+import { triggerAbilityHitItemDots } from './engine/ItemsCalculator';
+
 
 export default function App() {
     const [recasts, setRecasts] = useState<RecastStates>({});
@@ -51,7 +53,8 @@ export default function App() {
     const [timeScale, setTimeScale] = useState<number>(1.0); // 0 = Pausado, 0.5, 1, 2
     const [isPaused, setIsPaused] = useState<boolean>(false);
     const [attackerOutOfCombatTimer, setAttackerOutOfCombatTimer] = useState<number>(0);
-
+    const targetHpRef = useRef<number>(targetCurrentHp);
+    targetHpRef.current = targetCurrentHp;
     // Sincronização inicial de HP e Recursos ao trocar stats
     useEffect(() => {
         setAttackerResource(attackerStats.resourceType === 'fury' ? 0 : attackerStats.maxResource);
@@ -74,14 +77,13 @@ export default function App() {
         const loop = (time: number) => {
             if (lastTimeRef.current !== null) {
                 const rawDelta = (time - lastTimeRef.current) / 1000;
-                // Limita saltos de delta ao trocar de aba (máx 0.1s por frame)
                 const safeDelta = Math.min(rawDelta, 0.1);
                 const effectiveDelta = isPaused ? 0 : safeDelta * timeScale;
 
                 if (effectiveDelta > 0) {
                     setAttackerOutOfCombatTimer((prev) => prev + effectiveDelta);
 
-                    // 1. Processa DoTs e calcula dano gerado neste frame
+                    // 1. Processa DoTs usando a ref de HP mais recente
                     let frameDotDamage = 0;
                     setActiveDots((prevDots) => {
                         if (prevDots.length === 0) return prevDots;
@@ -91,14 +93,14 @@ export default function App() {
                             effectiveDelta,
                             attackerStats,
                             targetStats,
-                            targetCurrentHp
+                            targetHpRef.current
                         );
 
                         frameDotDamage = totalDamage;
                         return nextDots;
                     });
 
-                    // 2. Atualização atômica de vida: Deduz DoT e aplica HP5 no mesmo frame
+                    // 2. Atualização atômica de HP
                     setTargetCurrentHp((prevHp) => {
                         const afterDot = Math.max(0, prevHp - frameDotDamage);
                         return calculateHpRegen(afterDot, targetStats, effectiveDelta);
@@ -108,7 +110,7 @@ export default function App() {
                         setAttackerOutOfCombatTimer(0);
                     }
 
-                    // 3. Regeneração ou Decaimento de Recursos
+                    // 3. Recursos
                     setAttackerResource((prev) =>
                         calculateResourceTick(prev, attackerStats, effectiveDelta, attackerOutOfCombatTimer)
                     );
@@ -116,7 +118,7 @@ export default function App() {
                         calculateResourceTick(prev, targetStats, effectiveDelta, 0)
                     );
 
-                    // 4. Tick de Cooldowns e Recasts
+                    // 4. Cooldowns e Recasts
                     setCooldowns((prev) => updateCooldowns(prev, effectiveDelta));
                     setRecasts((prev) => {
                         const { nextStates, expiredSkills } = updateRecastWindows(prev, effectiveDelta);
@@ -146,7 +148,7 @@ export default function App() {
 
         animationFrameId = requestAnimationFrame(loop);
         return () => cancelAnimationFrame(animationFrameId);
-    }, [isPaused, timeScale, attackerStats, targetStats, attackerOutOfCombatTimer]);
+    }, [isPaused, timeScale, attackerStats, targetStats]);
 
     // Aplica dano, gasta fúria e reinicia o contador fora de combate
     const handleApplyDamage = (damageAmount: number, furyCost: number = 0, skillKey?: string) => {
@@ -163,23 +165,36 @@ export default function App() {
             const skill = attackerChamp.skills.find((s) => s.key === skillKey);
             if (!skill) return;
 
+            const rank = skillRanks[skillKey] || 1;
+
+            // 1. DoT nativo da Habilidade (ex: R do Renekton)
             const dotStages = skill.stages.filter((s) => s.isOverTime === true);
-            if (dotStages.length > 0) {
-                const rank = skillRanks[skillKey] || 1;
-                setActiveDots((prev) => [
-                    ...prev.filter((d) => !dotStages.some((stage) => stage.id === d.id)),
-                    ...dotStages.map((stage) => ({
-                        id: stage.id,
-                        sourceName: skill.name,
-                        stage,
-                        rank,
-                        durationRemaining: stage.durationSeconds ?? 5,
-                        tickInterval: stage.tickInterval ?? 1.0,
-                        timeUntilNextTick: stage.tickInterval ?? 1.0,
-                    })),
-                ]);
+            const nativeSkillDots: ActiveDotInstance[] = dotStages.map((stage) => ({
+                id: stage.id,
+                sourceName: skill.name,
+                stage,
+                rank,
+                durationRemaining: stage.durationSeconds ?? 5,
+                tickInterval: stage.tickInterval ?? 1.0,
+                timeUntilNextTick: stage.tickInterval ?? 1.0,
+            }));
+
+            // 2. DoTs de Itens ativados por habilidades (ex: Liandry)
+            const itemDots = triggerAbilityHitItemDots(attackerItems);
+
+            const allIncomingDots = [...nativeSkillDots, ...itemDots];
+
+            if (allIncomingDots.length > 0) {
+                setActiveDots((prev) => {
+                    // Remove instâncias anteriores das mesmas fontes para renovar duração
+                    const filtered = prev.filter(
+                        (d) => !allIncomingDots.some((incoming) => incoming.id === d.id)
+                    );
+                    return [...filtered, ...allIncomingDots];
+                });
             }
 
+            // 3. Sistema de Recast e Cooldowns
             const maxCasts = skill.maxCasts ?? 1;
             const activeRecast = recasts[skillKey];
             const currentCast = activeRecast ? activeRecast.currentCast : 1;
@@ -200,7 +215,6 @@ export default function App() {
                 });
 
                 if (skill.cooldown) {
-                    const rank = skillRanks[skillKey] || 1;
                     const baseCd = skill.cooldown[rank - 1] ?? skill.cooldown[0];
                     const realCd = calculateActualCooldown(baseCd, attackerStats.haste);
                     setCooldowns((prev) => ({ ...prev, [skillKey]: realCd }));

@@ -1,5 +1,7 @@
-import type { ItemPassive, ComputedUnitStats, DamageType, SkillStage } from '../types/game';
-import {calculateEffectiveDamage, } from './calculator.ts';
+import type { Item, ItemPassive, ComputedUnitStats, DamageType, SkillStage } from '../types/game';
+import type { ActiveDotInstance } from './gameLoop';
+import { calculateEffectiveDamage } from './calculator';
+
 export interface CalculatedPassiveDamage {
     passiveId: string;
     passiveName: string;
@@ -9,6 +11,46 @@ export interface CalculatedPassiveDamage {
     rawDamage: number;
     effectiveDamage: number;
     description: string;
+}
+
+export function triggerAbilityHitItemDots(
+    items: (Item | null)[]
+): ActiveDotInstance[] {
+    const dots: ActiveDotInstance[] = [];
+    const seenUnique = new Set<string>();
+
+    for (const item of items) {
+        if (!item?.passives) continue;
+
+        for (const passive of item.passives) {
+            // Identifica itens com queimação contínua (ex: Liandry)
+            if (passive.category === 'dot_burn') {
+                if (passive.unique && seenUnique.has(passive.id)) continue;
+                if (passive.unique) seenUnique.add(passive.id);
+
+                dots.push({
+                    id: `item_${item.id}_${passive.id}`,
+                    sourceName: `${item.name} (${passive.name})`,
+                    stage: {
+                        id: `item_stage_${passive.id}`,
+                        name: passive.name,
+                        damageType: passive.damageType,
+                        baseDamage: [passive.baseDamagePerSecond ?? 0],
+                        scalings: passive.scalingsPerSecond,
+                        isOverTime: true,
+                        durationSeconds: passive.duration,
+                        tickInterval: passive.tickRate,
+                    },
+                    rank: 1,
+                    durationRemaining: passive.duration,
+                    tickInterval: passive.tickRate,
+                    timeUntilNextTick: passive.tickRate,
+                });
+            }
+        }
+    }
+
+    return dots;
 }
 
 export function calculateItemPassiveDamage(
@@ -48,7 +90,6 @@ export function calculateItemPassiveDamage(
             name: passive.name,
             damageType: passive.damageType,
             baseDamage: [(passive.baseDamagePerSecond ?? 0) * passive.duration],
-
             scalings: passive.scalingsPerSecond.map((s) => ({
                 attribute: s.attribute,
                 ratio: s.ratio.map((r) => r * passive.duration),
