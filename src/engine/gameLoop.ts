@@ -1,4 +1,6 @@
-import type { ComputedUnitStats, RecastStates } from '../types/game';
+import type { ComputedUnitStats, RecastStates, SkillStage } from '../types/game';
+import { calculateEffectiveDamage } from './calculator';
+
 export interface CombatCooldowns {
     [skillKey: string]: number;
 }
@@ -73,4 +75,55 @@ export function updateCooldowns(
 export function calculateActualCooldown(baseCooldown:number, abilityHaste:number):number{
     const hasteMultiplier = 100/(100+Math.max(0,abilityHaste));
     return Number((baseCooldown * hasteMultiplier).toFixed(2));
+}
+
+export interface ActiveDotInstance {
+    id: string; // Ex: "renekton_r_aura_sec"
+    sourceName: string;
+    stage: SkillStage;
+    rank: number;
+    durationRemaining: number;
+    tickInterval: number;
+    timeUntilNextTick: number;
+}
+
+export function processActiveDots(
+    dots: ActiveDotInstance[],
+    deltaSeconds: number,
+    attackerStats: ComputedUnitStats,
+    targetStats: ComputedUnitStats,
+    targetCurrentHp: number
+): { totalDamage: number; nextDots: ActiveDotInstance[] } {
+    let totalDamage = 0;
+    const nextDots: ActiveDotInstance[] = [];
+
+    for (const dot of dots) {
+        const nextDuration = dot.durationRemaining - deltaSeconds;
+        let nextTickCountdown = dot.timeUntilNextTick - deltaSeconds;
+
+        if (nextDuration <= 0) {
+            // DoT expirou
+            continue;
+        }
+
+        while (nextTickCountdown <= 0) {
+            const result = calculateEffectiveDamage(
+                dot.stage,
+                dot.rank,
+                attackerStats,
+                targetStats,
+                Math.max(0, targetCurrentHp - totalDamage)
+            );
+            totalDamage += result.effectiveDamage;
+            nextTickCountdown += dot.tickInterval;
+        }
+
+        nextDots.push({
+            ...dot,
+            durationRemaining: nextDuration,
+            timeUntilNextTick: nextTickCountdown,
+        });
+    }
+
+    return { totalDamage, nextDots };
 }

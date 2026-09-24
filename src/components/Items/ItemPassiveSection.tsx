@@ -79,12 +79,12 @@ export function ItemPassivesSection({
                   Raw damage: <span className="text-slate-300 font-mono">{dmg.rawDamage}</span>
                 </span>
                                 <div className="text-right">
-                                    <span className="text-xs text-slate-400 mr-1">Efetivo:</span>
+                                    <span className="text-xs text-slate-400 mr-1">Effective:</span>
                                     <span className="text-lg font-bold font-mono text-emerald-400">
                     {dmg.effectiveDamage}
                   </span>
                                     <span className="text-[10px] text-slate-500 block">
-                    (~{percentLost}% da vida)
+                    (~{percentLost}% of target's HP)
                   </span>
                                 </div>
                             </div>

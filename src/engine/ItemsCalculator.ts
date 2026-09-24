@@ -38,7 +38,7 @@ export function calculateItemPassiveDamage(
             damageType: passive.damageType,
             rawDamage: damage.rawDamage,
             effectiveDamage: damage.effectiveDamage,
-            description: passive.trigger === 'spellblade' ? 'Ao usar skill (Spellblade)' : 'No acerto (On-Hit)',
+            description: passive.trigger === 'spellblade' ? 'On spell cast (Spellblade)' : 'On-hit',
         };
     }
 
@@ -65,7 +65,7 @@ export function calculateItemPassiveDamage(
             damageType: passive.damageType,
             rawDamage: damage.rawDamage,
             effectiveDamage: damage.effectiveDamage,
-            description: `Dano total ao longo de ${passive.duration}s`,
+            description: `Damage over ${passive.duration}s`,
         };
     }
 

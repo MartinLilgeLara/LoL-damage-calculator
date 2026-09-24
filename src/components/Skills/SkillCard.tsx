@@ -1,5 +1,6 @@
-import type { Skill, ComputedUnitStats } from '../../types/game';
+import type { Skill, ComputedUnitStats, ScalingRatio } from '../../types/game';
 import { calculateEffectiveDamage } from '../../engine/calculator';
+import { calculateActualCooldown } from '../../engine/gameLoop';
 import { SkillStageCard } from './SkillStageCard';
 
 interface SkillCardProps {
@@ -12,7 +13,6 @@ interface SkillCardProps {
     onCast: (damage: number, furyCost?: number) => void;
     targetCurrentHp?: number;
     cooldownRemaining?: number;
-    // [MUDANÇA 1]: Novas props para suporte genérico a múltiplos casts
     currentCast?: number;
     recastWindowRemaining?: number;
 }
@@ -25,7 +25,6 @@ export function SkillCard({
                               attackerResource,
                               targetCurrentHp,
                               cooldownRemaining = 0,
-                              // [MUDANÇA 2]: Valores padrão para as novas props
                               currentCast = 1,
                               recastWindowRemaining = 0,
                               onRankChange,
@@ -35,12 +34,15 @@ export function SkillCard({
     const isFuryUser = attackerStats.resourceType === 'fury';
     const hasEmpoweredFury = isFuryUser && attackerResource >= 50;
 
-    // [MUDANÇA 3]: Filtra primeiro apenas os estágios do cast atual (padrão é castIndex: 1)
+    // Tempo de recarga para o nível atual da habilidade
+    const baseCdAtRank = skill.cooldown ? (skill.cooldown[currentRank - 1] ?? skill.cooldown[0]) : 0;
+    const actualCd = calculateActualCooldown(baseCdAtRank, attackerStats.haste);
+
+    // Filtra os estágios de acordo com o cast atual
     const stagesForCurrentCast = skill.stages.filter(
         (s) => (s.castIndex ?? 1) === currentCast
     );
 
-    // [MUDANÇA 4]: Avalia se o estágio atual tem versão empoderada por fúria
     const hasEmpoweredStages = stagesForCurrentCast.some((s) => s.isEmpowered === true);
     const activeStages = stagesForCurrentCast.filter((stage) => {
         if (!hasEmpoweredStages) return true;
@@ -50,7 +52,10 @@ export function SkillCard({
     const handleCastSkill = () => {
         if (isOnCooldown) return;
 
-        const totalDamage = activeStages.reduce((acc, stage) => {
+        // Filtra apenas estágios instantâneos (estágios com isOverTime rodam via gameLoop)
+        const instantStages = activeStages.filter((stage) => stage.isOverTime !== true);
+
+        const totalDamage = instantStages.reduce((acc, stage) => {
             const calculated = calculateEffectiveDamage(
                 stage,
                 currentRank,
@@ -61,31 +66,52 @@ export function SkillCard({
             return acc + calculated.effectiveDamage;
         }, 0);
 
-        // Só consome fúria se o estágio conjurado for empoderado
         const furySpent = hasEmpoweredStages && hasEmpoweredFury ? 50 : 0;
         onCast(totalDamage, furySpent);
     };
 
-    // [MUDANÇA 5]: Variáveis visuais de estado para recast
     const isRecastActive = currentCast > 1;
 
-    // Rótulo dinâmico do botão
-    const buttonLabel = isOnCooldown
-        ? `${cooldownRemaining.toFixed(1)}s`
-        : isRecastActive
-            ? `Cast ${currentCast} (${recastWindowRemaining.toFixed(1)}s)`
-            : 'Cast';
+    const renderScalingText = (s: ScalingRatio) => {
+        const ratioVal = s.ratio[currentRank - 1] ?? s.ratio[0] ?? 0;
+        const percent = Math.round(ratioVal * 100);
+
+        switch (s.attribute) {
+            case 'totalAd':
+                return <span key={s.attribute} className="text-orange-400 font-semibold">(+{percent}% AD)</span>;
+            case 'bonusAd':
+                return <span key={s.attribute} className="text-orange-400 font-semibold">(+{percent}% bAD)</span>;
+            case 'ap':
+                return <span key={s.attribute} className="text-cyan-400 font-semibold">(+{percent}% AP)</span>;
+            case 'totalHp':
+            case 'bonusHp':
+                return <span key={s.attribute} className="text-emerald-400 font-semibold">(+{percent}% HP)</span>;
+            case 'targetMissingHp':
+                return <span key={s.attribute} className="text-slate-100 font-semibold">(+{percent}% Missing HP)</span>;
+            default:
+                return <span key={s.attribute} className="text-slate-400">({percent}%)</span>;
+        }
+    };
 
     return (
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4">
-            <div className="flex justify-between items-center">
-                <div className="flex items-center gap-2">
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4 text-left">
+            <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+                <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-xs font-mono font-bold bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded border border-amber-500/30">
                         {skill.key}
                     </span>
                     <strong className="text-base text-slate-100">{skill.name}</strong>
 
-                    {/* [MUDANÇA 6]: Tag indicando janela ativa de re-cast */}
+                    {/* Informação de Cooldown Estilo LoL */}
+                    <span className="text-xs font-mono text-slate-400 bg-slate-950 px-2 py-0.5 rounded border border-slate-800">
+                        ⏳ {actualCd}s
+                        {attackerStats.haste > 0 && (
+                            <span className="text-[10px] text-slate-500 ml-1">
+                                (Base: {baseCdAtRank}s | {attackerStats.haste} AH)
+                            </span>
+                        )}
+                    </span>
+
                     {isRecastActive && (
                         <span className="text-[10px] px-2 py-0.5 rounded font-bold uppercase bg-amber-950 text-amber-400 border border-amber-800">
                             Fase {currentCast} ({recastWindowRemaining.toFixed(1)}s)
@@ -104,12 +130,11 @@ export function SkillCard({
                         </span>
                     )}
 
-                    {/* [MUDANÇA 7]: Estilização dinâmica com destaque quando está em janela de recast */}
                     <button
                         type="button"
                         disabled={isOnCooldown}
                         onClick={handleCastSkill}
-                        className={`px-2.5 py-1 font-bold text-xs rounded transition-all ml-1 ${
+                        className={`px-3 py-1 font-bold text-xs rounded transition-all ml-1 ${
                             isOnCooldown
                                 ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700 font-mono pointer-events-none'
                                 : isRecastActive
@@ -117,10 +142,15 @@ export function SkillCard({
                                     : 'bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-slate-950 cursor-pointer shadow-sm'
                         }`}
                     >
-                        {buttonLabel}
+                        {isOnCooldown
+                            ? `${cooldownRemaining.toFixed(1)}s`
+                            : isRecastActive
+                                ? `Cast ${currentCast} (${recastWindowRemaining.toFixed(1)}s)`
+                                : 'Cast'}
                     </button>
                 </div>
 
+                {/* Seleção de Nível da Habilidade */}
                 <div className="flex gap-1">
                     {Array.from({ length: skill.maxRank }, (_, i) => i + 1).map((rank) => (
                         <button
@@ -139,17 +169,34 @@ export function SkillCard({
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-                {activeStages.map((stage) => (
-                    <SkillStageCard
-                        key={stage.id}
-                        stage={stage}
-                        rank={currentRank}
-                        attackerStats={attackerStats}
-                        targetStats={targetStats}
-                        targetCurrentHp={targetCurrentHp}
-                    />
-                ))}
+            {/* Decomposição dos Danos com Fórmulas e Cores Oficiais */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                {activeStages.map((stage) => {
+                    const rankIdx = Math.min(currentRank - 1, stage.baseDamage.length - 1);
+                    const baseDamageVal = stage.baseDamage[rankIdx] ?? 0;
+
+                    return (
+                        <div key={stage.id} className="flex flex-col gap-1">
+                            <SkillStageCard
+                                stage={stage}
+                                rank={currentRank}
+                                attackerStats={attackerStats}
+                                targetStats={targetStats}
+                                targetCurrentHp={targetCurrentHp}
+                            />
+                            {/* Linha de Fórmula ao Estilo Tooltip do LoL */}
+                            <div className="text-[11px] text-slate-400 px-2 py-1 bg-slate-950/60 rounded border border-slate-800/60 flex items-center gap-1.5 flex-wrap">
+                                <span className="text-slate-500 font-mono">Fórmula:</span>
+                                <span className="text-slate-200 font-mono font-medium">{baseDamageVal}</span>
+                                {stage.scalings.map((scaling) => (
+                                    <span key={scaling.attribute} className="font-mono">
+                                        + {renderScalingText(scaling)}
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+                    );
+                })}
             </div>
         </div>
     );

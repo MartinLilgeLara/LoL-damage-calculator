@@ -8,12 +8,15 @@ import { ItemPassivesSection } from './components/Items/ItemPassiveSection';
 import { HealthBar } from './components/Combat/HealthBar';
 import { ResourceBar } from './components/ChampionPanel/ResourceBar';
 import { updateRecastWindows } from './engine/gameLoop';
+import { CombatControlsBar } from './components/Combat/CombatControlsBar';
 import {
     calculateHpRegen,
     calculateResourceTick,
     updateCooldowns,
     calculateActualCooldown,
     type CombatCooldowns,
+    processActiveDots,
+    type ActiveDotInstance,
 } from './engine/gameLoop';
 
 export default function App() {
@@ -21,7 +24,7 @@ export default function App() {
     const [attackerChampionId, setAttackerChampionId] = useState<string>(mockChampions[0].id);
     const [attackerLevel, setAttackerLevel] = useState<number>(3);
     const [attackerItems, setAttackerItems] = useState<(Item | null)[]>(Array(6).fill(null));
-
+    const [activeDots, setActiveDots] = useState<ActiveDotInstance[]>([]);
     const [targetChampionId, setTargetChampionId] = useState<string>(mockChampions[1].id);
     const [targetLevel, setTargetLevel] = useState<number>(3);
     const [targetItems, setTargetItems] = useState<(Item | null)[]>(Array(6).fill(null));
@@ -76,12 +79,34 @@ export default function App() {
                 const effectiveDelta = isPaused ? 0 : safeDelta * timeScale;
 
                 if (effectiveDelta > 0) {
-                    // 1. Atualiza temporizador fora de combate (para decaimento de fúria)
                     setAttackerOutOfCombatTimer((prev) => prev + effectiveDelta);
 
-                    // 2. Regeneração contínua de Vida
-                    setTargetCurrentHp((prev) => calculateHpRegen(prev, targetStats, effectiveDelta));
-                    //setAttackerCurrentHp((prev) => calculateHpRegen(prev, attackerStats, effectiveDelta));
+                    // 1. Processa DoTs e calcula dano gerado neste frame
+                    let frameDotDamage = 0;
+                    setActiveDots((prevDots) => {
+                        if (prevDots.length === 0) return prevDots;
+
+                        const { totalDamage, nextDots } = processActiveDots(
+                            prevDots,
+                            effectiveDelta,
+                            attackerStats,
+                            targetStats,
+                            targetCurrentHp
+                        );
+
+                        frameDotDamage = totalDamage;
+                        return nextDots;
+                    });
+
+                    // 2. Atualização atômica de vida: Deduz DoT e aplica HP5 no mesmo frame
+                    setTargetCurrentHp((prevHp) => {
+                        const afterDot = Math.max(0, prevHp - frameDotDamage);
+                        return calculateHpRegen(afterDot, targetStats, effectiveDelta);
+                    });
+
+                    if (frameDotDamage > 0) {
+                        setAttackerOutOfCombatTimer(0);
+                    }
 
                     // 3. Regeneração ou Decaimento de Recursos
                     setAttackerResource((prev) =>
@@ -91,12 +116,11 @@ export default function App() {
                         calculateResourceTick(prev, targetStats, effectiveDelta, 0)
                     );
 
-                    // 4. Tick de Cooldowns
+                    // 4. Tick de Cooldowns e Recasts
                     setCooldowns((prev) => updateCooldowns(prev, effectiveDelta));
                     setRecasts((prev) => {
                         const { nextStates, expiredSkills } = updateRecastWindows(prev, effectiveDelta);
 
-                        // Se alguma janela de recast expirou, coloca a skill em cooldown imediatamente
                         if (expiredSkills.length > 0) {
                             setCooldowns((cds) => {
                                 const updated = { ...cds };
@@ -126,8 +150,10 @@ export default function App() {
 
     // Aplica dano, gasta fúria e reinicia o contador fora de combate
     const handleApplyDamage = (damageAmount: number, furyCost: number = 0, skillKey?: string) => {
-        setTargetCurrentHp((prev) => Math.max(0, Number((prev - damageAmount).toFixed(1))));
-        setAttackerOutOfCombatTimer(0);
+        if (damageAmount > 0) {
+            setTargetCurrentHp((prev) => Math.max(0, Number((prev - damageAmount).toFixed(1))));
+            setAttackerOutOfCombatTimer(0);
+        }
 
         if (furyCost > 0) {
             setAttackerResource((prev) => Math.max(0, prev - furyCost));
@@ -137,12 +163,28 @@ export default function App() {
             const skill = attackerChamp.skills.find((s) => s.key === skillKey);
             if (!skill) return;
 
+            const dotStages = skill.stages.filter((s) => s.isOverTime === true);
+            if (dotStages.length > 0) {
+                const rank = skillRanks[skillKey] || 1;
+                setActiveDots((prev) => [
+                    ...prev.filter((d) => !dotStages.some((stage) => stage.id === d.id)),
+                    ...dotStages.map((stage) => ({
+                        id: stage.id,
+                        sourceName: skill.name,
+                        stage,
+                        rank,
+                        durationRemaining: stage.durationSeconds ?? 5,
+                        tickInterval: stage.tickInterval ?? 1.0,
+                        timeUntilNextTick: stage.tickInterval ?? 1.0,
+                    })),
+                ]);
+            }
+
             const maxCasts = skill.maxCasts ?? 1;
             const activeRecast = recasts[skillKey];
             const currentCast = activeRecast ? activeRecast.currentCast : 1;
 
             if (currentCast < maxCasts && skill.recastWindow) {
-
                 setRecasts((prev) => ({
                     ...prev,
                     [skillKey]: {
@@ -151,7 +193,6 @@ export default function App() {
                     },
                 }));
             } else {
-                // Último cast da habilidade: limpa o estado de recast e inicia o cooldown total
                 setRecasts((prev) => {
                     const next = { ...prev };
                     delete next[skillKey];
@@ -169,9 +210,9 @@ export default function App() {
     };
 
     const handleResetCombat = () => {
-        setTargetCurrentHp(targetStats.totalHp);
-        //setAttackerCurrentHp(attackerStats.totalHp);
-        setCooldowns({ Q: 0, W: 0, E: 0, R: 0 });
+        handleResetHp();
+        handleResetCooldowns();
+        setActiveDots([]);
         setAttackerOutOfCombatTimer(0);
     };
 
@@ -187,58 +228,37 @@ export default function App() {
             setTargetItems(next);
         }
     };
+    const handleResetCooldowns = () => {
+        setCooldowns({ Q: 0, W: 0, E: 0, R: 0 });
+        setRecasts({});
+    };
+
+    const handleResetHp = () => {
+        setTargetCurrentHp(targetStats.totalHp);
+    };
+
+
 
     return (
         <div className="min-h-screen bg-slate-950 text-slate-100 p-6 flex flex-col items-center gap-6">
-            <header className="max-w-6xl w-full flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <header className="max-w-6xl w-full flex justify-between items-center border-b border-slate-800/80 pb-4">
                 <div>
                     <h1 className="text-3xl font-bold text-amber-400">LoL Combat Engine Simulator</h1>
                     <p className="text-sm text-slate-400">Real-time Game Loop Simulator (Renekton vs Garen)</p>
                 </div>
-
-                {/* Barra de Controle de Tempo e Simulação */}
-                <div className="flex items-center gap-2 bg-slate-900 border border-slate-800 p-2 rounded-xl">
-                    <button
-                        type="button"
-                        onClick={() => setIsPaused(!isPaused)}
-                        className={`px-3 py-1 text-xs font-bold rounded cursor-pointer transition ${
-                            isPaused ? 'bg-amber-500 text-slate-950' : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
-                        }`}
-                    >
-                        {isPaused ? '▶ Resume' : '⏸ Pause'}
-                    </button>
-
-                    <div className="h-4 w-[1px] bg-slate-700" />
-
-                    {[0.5, 1.0, 2.0].map((speed) => (
-                        <button
-                            key={speed}
-                            type="button"
-                            onClick={() => {
-                                setTimeScale(speed);
-                                setIsPaused(false);
-                            }}
-                            className={`px-2.5 py-1 text-xs font-mono font-bold rounded cursor-pointer transition ${
-                                timeScale === speed && !isPaused
-                                    ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40'
-                                    : 'text-slate-400 hover:bg-slate-800'
-                            }`}
-                        >
-                            {speed}x
-                        </button>
-                    ))}
-
-                    <div className="h-4 w-[1px] bg-slate-700" />
-
-                    <button
-                        type="button"
-                        onClick={handleResetCombat}
-                        className="px-2.5 py-1 bg-red-950/60 hover:bg-red-900/80 text-red-300 border border-red-800 text-xs font-bold rounded cursor-pointer"
-                    >
-                        Reset All
-                    </button>
-                </div>
             </header>
+            <CombatControlsBar
+                isPaused={isPaused}
+                timeScale={timeScale}
+                onTogglePause={() => setIsPaused(!isPaused)}
+                onTimeScaleChange={(speed) => {
+                    setTimeScale(speed);
+                    setIsPaused(false);
+                }}
+                onResetCooldowns={handleResetCooldowns}
+                onResetHp={handleResetHp}
+                onResetAll={handleResetCombat}
+            />
 
             {/* Grid Principal: Painéis + Barras de Recurso */}
             <div className="max-w-6xl w-full grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -293,7 +313,25 @@ export default function App() {
                     onReset={() => setTargetCurrentHp(targetStats.totalHp)}
                 />
             </div>
-
+            {activeDots.length > 0 && (
+                <div className="max-w-6xl w-full flex flex-wrap gap-2">
+                    {activeDots.map((dot) => (
+                        <div
+                            key={dot.id}
+                            className="bg-amber-950/40 border border-amber-800/80 px-3 py-1.5 rounded-lg flex items-center gap-2 text-xs"
+                        >
+                            <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
+                            <span className="text-amber-200 font-bold">{dot.sourceName} ativo:</span>
+                            <span className="font-mono text-amber-400 font-bold">
+                                {dot.durationRemaining.toFixed(1)}s restantes
+                            </span>
+                            <span className="text-[10px] text-slate-400">
+                                (Tick a cada {dot.tickInterval}s)
+                            </span>
+                        </div>
+                    ))}
+                </div>
+            )}
             {/* Lista de Habilidades com Cooldowns em Tempo Real */}
             <section className="max-w-6xl w-full space-y-4">
                 <h3 className="text-xl font-bold text-slate-200">Skills ({attackerChamp.name})</h3>
