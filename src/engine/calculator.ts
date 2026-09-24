@@ -89,6 +89,9 @@ export function computeUnitStats(
     let percentArmorPen = 0;
     let percentMagicPen = 0;
     let haste = 0;
+    let critChance = 0;
+    let bonusCritDamage = 0;
+    let bonusAtkSpeedPercent = 0;
     for (const item of items) {
         if (!item) continue;
         bonusHp += item.stats.hp ?? 0;
@@ -102,7 +105,15 @@ export function computeUnitStats(
         percentArmorPen += item.stats.percentArmorPen ?? 0;
         percentMagicPen += item.stats.percentMagicPen ?? 0;
         haste += item.stats.haste ?? 0;
+        critChance += item.stats.critChance ?? 0;
+        bonusCritDamage += item.stats.critDamage ?? 0;
+        bonusAtkSpeedPercent += item.stats.bonusAtkSpeedPercent ?? 0;
     }
+    const asGrowthFactor = (level - 1) * (0.7025 + 0.0175 * (level - 1));
+    const totalBonusAs = (champion.baseStats.asPerLevel * asGrowthFactor) + bonusAtkSpeedPercent;
+    const computedAtkSpeed = Number(
+        (champion.baseStats.atkSpeed * (1 + totalBonusAs / 100)).toFixed(3)
+    );
     const maxResource = resourceType === 'fury' ? 100 : Math.round(baseResource + bonusResource);
     return {
         level,
@@ -125,7 +136,9 @@ export function computeUnitStats(
         flatMagicPen,
         percentArmorPen,
         percentMagicPen,
-        atkSpeed: champion.baseStats.atkSpeed,
         haste,
+        atkSpeed: computedAtkSpeed,
+        critChance: Math.min(100, critChance),
+        critDamage: 175 + bonusCritDamage,
     };
 }

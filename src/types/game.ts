@@ -34,6 +34,9 @@ export type ItemStatKey =
     | 'percentArmorPen'
     | 'percentMagicPen'
     | 'haste'
+    | 'critChance'
+    | 'critDamage'
+    | 'bonusAtkSpeedPercent'
     | 'hpRegenPercent'
     | 'manaRegenPercent';
 
@@ -121,6 +124,8 @@ export interface ComputedUnitStats {
     percentMagicPen:number;
     haste: number;
     atkSpeed: number;
+    critChance: number;
+    critDamage: number;
 }
 
 export interface StatMutiplierPassive {
