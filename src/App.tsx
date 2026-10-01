@@ -9,11 +9,9 @@ import { useCombatLog } from './hooks/useCombatLog';
 import { useCombatLoop } from './hooks/useCombatLoop';
 import type { Item, QueuedCombatHit } from './types/game';
 
-import { ChampionPanel } from './components/ChampionPanel/ChampionPanel';
+import { ChampionCardHUD } from './components/ChampionPanel/ChampionCardHUD';
 import { SkillCard } from './components/Skills/SkillCard';
 import { ItemPassivesSection } from './components/Items/ItemPassiveSection';
-import { HealthBar } from './components/Combat/HealthBar';
-import { ResourceBar } from './components/ChampionPanel/ResourceBar';
 import { CombatControlsBar } from './components/Combat/CombatControlsBar';
 import { AutoAttackCard } from './components/Combat/AutoAttackCard';
 import { CombatLog } from './components/Combat/CombatLog';
@@ -232,64 +230,58 @@ export default function App() {
                     engine.setCooldowns({ Q: 0, W: 0, E: 0, R: 0 });
                     engine.setRecasts({});
                 }}
-                onResetHp={() => engine.setTargetCurrentHp(targetStats.totalHp)}
+                onResetHp={() => {
+                    engine.setAttackerCurrentHp(attackerStats.totalHp);
+                    engine.setTargetCurrentHp(targetStats.totalHp);
+                }}
                 onResetAll={() => {
                     engine.resetCombat();
                     clearCombatLogs();
                 }}
             />
 
-            {/* Main Dual Champion Grid */}
-            <div className="max-w-6xl w-full grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                    <ChampionPanel
-                        role="attacker"
-                        selectedChampionId={attackerChampionId}
-                        level={attackerLevel}
-                        items={attackerItems}
-                        computedStats={attackerStats}
-                        availableChampions={mockChampions}
-                        availableItems={mockItems}
-                        onChampionChange={setAttackerChampionId}
-                        onLevelChange={setAttackerLevel}
-                        onItemChange={(idx, id) => handleItemChange(true, idx, id)}
-                    />
-                    <ResourceBar
-                        resourceType={attackerStats.resourceType}
-                        currentValue={engine.attackerResource}
-                        maxValue={attackerStats.maxResource}
-                        onChange={engine.setAttackerResource}
-                    />
-                </div>
+            {/* Mirrored Dual Champion Layout */}
+            <div className="max-w-6xl w-full grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Attacker (Left Side) */}
+                <ChampionCardHUD
+                    role="attacker"
+                    champion={attackerChamp}
+                    level={attackerLevel}
+                    items={attackerItems}
+                    stats={attackerStats}
+                    currentHp={engine.attackerCurrentHp}
+                    maxHp={attackerStats.totalHp}
+                    currentResource={engine.attackerResource}
+                    maxResource={attackerStats.maxResource}
+                    resourceType={attackerStats.resourceType}
+                    availableChampions={mockChampions}
+                    availableItems={mockItems}
+                    onChampionChange={setAttackerChampionId}
+                    onLevelChange={setAttackerLevel}
+                    onItemChange={(idx, id) => handleItemChange(true, idx, id)}
+                    onResourceChange={engine.setAttackerResource}
+                    onHpChange={engine.setAttackerCurrentHp}
+                />
 
-                <div>
-                    <ChampionPanel
-                        role="target"
-                        selectedChampionId={targetChampionId}
-                        level={targetLevel}
-                        items={targetItems}
-                        computedStats={targetStats}
-                        availableChampions={mockChampions}
-                        availableItems={mockItems}
-                        onChampionChange={setTargetChampionId}
-                        onLevelChange={setTargetLevel}
-                        onItemChange={(idx, id) => handleItemChange(false, idx, id)}
-                    />
-                    <ResourceBar
-                        resourceType={targetStats.resourceType}
-                        currentValue={engine.targetResource}
-                        maxValue={targetStats.maxResource}
-                        onChange={engine.setTargetResource}
-                    />
-                </div>
-            </div>
-
-            {/* Target Health Bar */}
-            <div className="max-w-6xl w-full">
-                <HealthBar
+                {/* Target (Right Side - Mirrored) */}
+                <ChampionCardHUD
+                    role="target"
+                    champion={targetChamp}
+                    level={targetLevel}
+                    items={targetItems}
+                    stats={targetStats}
                     currentHp={engine.targetCurrentHp}
                     maxHp={targetStats.totalHp}
-                    onReset={() => engine.setTargetCurrentHp(targetStats.totalHp)}
+                    currentResource={engine.targetResource}
+                    maxResource={targetStats.maxResource}
+                    resourceType={targetStats.resourceType}
+                    availableChampions={mockChampions}
+                    availableItems={mockItems}
+                    onChampionChange={setTargetChampionId}
+                    onLevelChange={setTargetLevel}
+                    onItemChange={(idx, id) => handleItemChange(false, idx, id)}
+                    onResourceChange={engine.setTargetResource}
+                    onHpChange={engine.setTargetCurrentHp}
                 />
             </div>
 

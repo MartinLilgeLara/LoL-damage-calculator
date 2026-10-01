@@ -28,14 +28,20 @@ export function useCombatLoop({
                                   skillRanks,
                                   onLogBatch,
                               }: CombatLoopProps) {
+    // Estado de Vida Reativo para Ambos os Campeões
+    const [attackerCurrentHp, setAttackerCurrentHp] = useState<number>(attackerStats.totalHp);
     const [targetCurrentHp, setTargetCurrentHp] = useState<number>(targetStats.totalHp);
+
+    // Recursos
     const [attackerResource, setAttackerResource] = useState<number>(0);
     const [targetResource, setTargetResource] = useState<number>(0);
 
+    // Controles do Motor
     const [isPaused, setIsPaused] = useState<boolean>(false);
     const [timeScale, setTimeScale] = useState<number>(1.0);
     const [outOfCombatTimer, setOutOfCombatTimer] = useState<number>(0);
 
+    // Estados de Combate
     const [cooldowns, setCooldowns] = useState<CombatCooldowns>({ Q: 0, W: 0, E: 0, R: 0 });
     const [recasts, setRecasts] = useState<RecastStates>({});
     const [activeDots, setActiveDots] = useState<ActiveDotInstance[]>([]);
@@ -63,16 +69,19 @@ export function useCombatLoop({
         setQueuedHits((prev) => [...prev, ...hits]);
     }, []);
 
+    // Sincronização inicial do atacante ao mudar de campeão ou totalHp
     useEffect(() => {
+        setAttackerCurrentHp(attackerStats.totalHp);
         setAttackerResource(attackerStats.resourceType === 'fury' ? 0 : attackerStats.maxResource);
         setCooldowns({ Q: 0, W: 0, E: 0, R: 0 });
         setOutOfCombatTimer(0);
-    }, [attackerChamp.id, attackerStats.maxResource, attackerStats.resourceType]);
+    }, [attackerChamp.id, attackerStats.totalHp, attackerStats.maxResource, attackerStats.resourceType]);
 
+    // Sincronização inicial do alvo ao mudar de campeão ou totalHp
     useEffect(() => {
-        setTargetResource(targetStats.resourceType === 'fury' ? 0 : targetStats.maxResource);
         setTargetCurrentHp(targetStats.totalHp);
-    }, [targetStats.maxResource, targetStats.resourceType, targetStats.totalHp]);
+        setTargetResource(targetStats.resourceType === 'fury' ? 0 : targetStats.maxResource);
+    }, [targetStats.totalHp, targetStats.maxResource, targetStats.resourceType]);
 
     useEffect(() => {
         let frameId: number;
@@ -86,7 +95,7 @@ export function useCombatLoop({
                 if (effectiveDelta > 0) {
                     setOutOfCombatTimer((prev) => prev + effectiveDelta);
 
-                    // 1. Spellblade Decay
+                    // 1. Spellblade Buff Decay
                     setSpellbladeState((prev) => {
                         const nextCd = Math.max(0, prev.cooldownRemaining - effectiveDelta);
                         if (!prev.active) return { ...prev, cooldownRemaining: nextCd };
@@ -96,14 +105,14 @@ export function useCombatLoop({
                             : { ...prev, durationRemaining: nextDur, cooldownRemaining: nextCd };
                     });
 
-                    // 2. Empower Decay
+                    // 2. Empowered Attack Decay
                     setActiveEmpower((prev) => {
                         if (!prev) return null;
                         const nextDur = prev.durationRemaining - effectiveDelta;
                         return nextDur <= 0 ? null : { ...prev, durationRemaining: nextDur };
                     });
 
-                    // 3. Process Queued Discrete Hits (Multi-Hit without StrictMode duplication)
+                    // 3. Processamento de Golpes Fatiados (Multi-Hit / Renekton W)
                     if (queuedHits.length > 0) {
                         const remainingHits: QueuedCombatHit[] = [];
                         const connectingHits: RawLogPayload[] = [];
@@ -145,7 +154,8 @@ export function useCombatLoop({
                         setQueuedHits(remainingHits);
                     }
 
-                    // 4. DoTs Processing
+                    // 4. DoTs Ativos (Dano acumulado neste frame)
+                    let currentFrameDotDamage = 0;
                     if (activeDots.length > 0) {
                         const { totalDamage, nextDots, triggeredTicks } = processActiveDots(
                             activeDots,
@@ -155,13 +165,7 @@ export function useCombatLoop({
                             targetHpRef.current
                         );
 
-                        if (totalDamage > 0) {
-                            setTargetCurrentHp((prev) => {
-                                const after = Math.max(0, prev - totalDamage);
-                                return calculateHpRegen(after, targetStats, effectiveDelta);
-                            });
-                            setOutOfCombatTimer(0);
-                        }
+                        currentFrameDotDamage = totalDamage;
 
                         if (triggeredTicks.length > 0) {
                             onLogBatch(
@@ -177,7 +181,19 @@ export function useCombatLoop({
                         setActiveDots(nextDots);
                     }
 
-                    // 5. Resource Regen & Out of Combat Decay
+                    // 5. REGENERAÇÃO DE VIDA CONTÍNUA PARA AMBOS OS CAMPEÕES
+                    // Aplica HP5 contínuo no Atacante
+                    setAttackerCurrentHp((prevHp) =>
+                        calculateHpRegen(prevHp, attackerStats, effectiveDelta)
+                    );
+
+                    // Aplica DoTs (se houver) e HP5 contínuo no Alvo
+                    setTargetCurrentHp((prevHp) => {
+                        const hpAfterDots = Math.max(0, prevHp - currentFrameDotDamage);
+                        return calculateHpRegen(hpAfterDots, targetStats, effectiveDelta);
+                    });
+
+                    // 6. Regeneração e Decay de Recursos (Mana / Fúria)
                     setAttackerResource((prev) =>
                         calculateResourceTick(prev, attackerStats, effectiveDelta, outOfCombatTimer)
                     );
@@ -185,7 +201,7 @@ export function useCombatLoop({
                         calculateResourceTick(prev, targetStats, effectiveDelta, 0)
                     );
 
-                    // 6. Cooldowns & Recasts
+                    // 7. Cooldowns & Recasts
                     setCooldowns((prev) => updateCooldowns(prev, effectiveDelta));
                     setRecasts((prev) => {
                         const { nextStates, expiredSkills } = updateRecastWindows(prev, effectiveDelta);
@@ -206,7 +222,7 @@ export function useCombatLoop({
                         return nextStates;
                     });
 
-                    // 7. Standard Auto-Attack
+                    // 8. Auto-Ataque com Windup
                     setAttackCooldownRemaining((prev) => Math.max(0, prev - effectiveDelta));
                     setAttackWindupRemaining((prev) => {
                         if (prev <= 0) return 0;
@@ -245,6 +261,7 @@ export function useCombatLoop({
     }, [isPaused, timeScale, attackerStats, targetStats, outOfCombatTimer, skillRanks, activeDots, queuedHits, onLogBatch]);
 
     const resetCombat = () => {
+        setAttackerCurrentHp(attackerStats.totalHp);
         setTargetCurrentHp(targetStats.totalHp);
         setCooldowns({ Q: 0, W: 0, E: 0, R: 0 });
         setRecasts({});
@@ -266,6 +283,8 @@ export function useCombatLoop({
     };
 
     return {
+        attackerCurrentHp,
+        setAttackerCurrentHp,
         targetCurrentHp,
         setTargetCurrentHp,
         attackerResource,

@@ -6,6 +6,7 @@ export const mockItems: Item[] = [
         id: 'liandry',
         name: "Liandry's Torment",
         cost: 3000,
+        iconUrl: 'https://ddragon.leagueoflegends.com/cdn/14.20.1/img/item/6653.png',
         stats: { ap: 70, hp: 300 },
         passives: [
             {
@@ -24,6 +25,7 @@ export const mockItems: Item[] = [
         id: 'rabadon',
         name: "Rabadon's Deathcap",
         cost: 3600,
+        iconUrl: 'https://ddragon.leagueoflegends.com/cdn/14.20.1/img/item/3089.png',
         stats: { ap: 140 },
         passives: [
             {
@@ -40,6 +42,7 @@ export const mockItems: Item[] = [
         id: 'luden',
         name: "Luden's Companion",
         cost: 3000,
+        iconUrl: 'https://ddragon.leagueoflegends.com/cdn/14.20.1/img/item/6655.png',
         stats: { ap: 90, haste: 20, flatMagicPen: 10 },
         passives: [
             {
@@ -58,6 +61,7 @@ export const mockItems: Item[] = [
         id: 'lich_bane',
         name: 'Lich Bane',
         cost: 3200,
+        iconUrl: 'https://ddragon.leagueoflegends.com/cdn/14.20.1/img/item/3100.png',
         stats: { ap: 100, haste: 15, bonusAtkSpeedPercent: 8 },
         passives: [
             {
@@ -79,13 +83,15 @@ export const mockItems: Item[] = [
         id: 'void_staff',
         name: 'Void Staff',
         cost: 3000,
+        iconUrl: 'https://ddragon.leagueoflegends.com/cdn/14.20.1/img/item/3135.png',
         stats: { ap: 80, percentMagicPen: 40 },
     },
     {
         id: 'sorcerer_shoes',
         name: "Sorcerer's Shoes",
         cost: 1100,
-        stats: { flatMagicPen: 18 },
+        iconUrl: 'https://ddragon.leagueoflegends.com/cdn/14.20.1/img/item/3020.png',
+        stats: { flatMagicPen: 18, movementSpeed: 45 },
     },
 
     // --- LUTADORES & AD BRUTO ---
@@ -93,6 +99,7 @@ export const mockItems: Item[] = [
         id: 'sheen',
         name: 'Sheen',
         cost: 900,
+        iconUrl: 'https://ddragon.leagueoflegends.com/cdn/14.20.1/img/item/3057.png',
         stats: { haste: 10 },
         passives: [
             {
@@ -113,16 +120,18 @@ export const mockItems: Item[] = [
         id: 'infinity_edge',
         name: 'Infinity Edge',
         cost: 3400,
+        iconUrl: 'https://ddragon.leagueoflegends.com/cdn/14.20.1/img/item/3031.png',
         stats: {
             ad: 80,
             critChance: 25,
-            critDamage: 40, // +40% de multiplicador de crítico (175% -> 215%)
+            critDamage: 40,
         },
     },
     {
         id: 'lord_dominik',
         name: "Lord Dominik's Regards",
         cost: 3000,
+        iconUrl: 'https://ddragon.leagueoflegends.com/cdn/14.20.1/img/item/3036.png',
         stats: {
             ad: 45,
             critChance: 25,
@@ -135,6 +144,7 @@ export const mockItems: Item[] = [
         id: 'sunfire_aegis',
         name: 'Sunfire Aegis',
         cost: 2700,
+        iconUrl: 'https://ddragon.leagueoflegends.com/cdn/14.20.1/img/item/3068.png',
         stats: { hp: 500, armor: 50 },
         passives: [
             {
@@ -154,6 +164,7 @@ export const mockItems: Item[] = [
         id: 'heartsteel',
         name: 'Heartsteel',
         cost: 3000,
+        iconUrl: 'https://ddragon.leagueoflegends.com/cdn/14.20.1/img/item/3084.png',
         stats: { hp: 900 },
         passives: [
             {
@@ -173,6 +184,7 @@ export const mockItems: Item[] = [
         id: 'thornmail',
         name: 'Thornmail',
         cost: 2700,
+        iconUrl: 'https://ddragon.leagueoflegends.com/cdn/14.20.1/img/item/3075.png',
         stats: { hp: 350, armor: 70 },
         passives: [
             {
@@ -191,6 +203,7 @@ export const mockItems: Item[] = [
         id: 'spirit_visage',
         name: 'Spirit Visage',
         cost: 2900,
+        iconUrl: 'https://ddragon.leagueoflegends.com/cdn/14.20.1/img/item/3065.png',
         stats: { hp: 450, mr: 60, haste: 10 },
     },
 ];

@@ -4,6 +4,9 @@ export const mockChampions: Champion[] = [
 {
     id: 'renekton',
     name: 'Renekton',
+    title: 'the Butcher of the Sands',
+    avatarUrl: 'https://ddragon.leagueoflegends.com/cdn/14.20.1/img/champion/Renekton.png',
+    loadingUrl: 'https://ddragon.leagueoflegends.com/cdn/img/champion/loading/Renekton_0.jpg',
     baseStats: {
         hp: 650,
         hpPerLevel: 99,
@@ -159,6 +162,9 @@ export const mockChampions: Champion[] = [
     {
         id: 'garen',
         name: 'Garen',
+        title: 'The Might of Demacia',
+        avatarUrl: 'https://ddragon.leagueoflegends.com/cdn/14.20.1/img/champion/Garen.png',
+        loadingUrl: 'https://ddragon.leagueoflegends.com/cdn/img/champion/loading/Garen_0.jpg',
         baseStats: {
             hp: 690,
             hpPerLevel: 98,

@@ -38,7 +38,12 @@ export type ItemStatKey =
     | 'critDamage'
     | 'bonusAtkSpeedPercent'
     | 'hpRegenPercent'
-    | 'manaRegenPercent';
+    | 'manaRegenPercent'
+    | 'omnivamp'
+    | 'lifesteal'
+    | 'healAndShieldPower'
+    | 'tenacity'
+    | 'movementSpeed';
 
 export type ScalingAttribute =
     | 'totalAd'
@@ -101,7 +106,10 @@ export interface Champion {
     id:string;
     name:string;
     baseStats:ChampionBaseStats;
-    skills: Skill[]
+    skills: Skill[];
+    title?:string;
+    avatarUrl?: string; // Imagem quadrada oficial do Data Dragon
+    loadingUrl?: string;
 }
 
 export interface ComputedUnitStats {
@@ -129,6 +137,11 @@ export interface ComputedUnitStats {
     atkSpeed: number;
     critChance: number;
     critDamage: number;
+    omnivamp: number;
+    lifesteal: number;
+    healAndShieldPower: number;
+    tenacity: number;
+    movementSpeed: number;
 }
 
 export interface StatMutiplierPassive {
@@ -172,6 +185,7 @@ export interface Item {
     id:string;
     name:string;
     cost:number;
+    iconUrl?: string;
     stats:Partial<Record<ItemStatKey,number>>;
     passives?:ItemPassive[]
 }

@@ -92,6 +92,11 @@ export function computeUnitStats(
     let critChance = 0;
     let bonusCritDamage = 0;
     let bonusAtkSpeedPercent = 0;
+    let omnivamp = 0;
+    let lifesteal = 0;
+    let healAndShieldPower = 0;
+    let tenacity = 0;
+    let bonusMs = 0;
     for (const item of items) {
         if (!item) continue;
         bonusHp += item.stats.hp ?? 0;
@@ -108,6 +113,11 @@ export function computeUnitStats(
         critChance += item.stats.critChance ?? 0;
         bonusCritDamage += item.stats.critDamage ?? 0;
         bonusAtkSpeedPercent += item.stats.bonusAtkSpeedPercent ?? 0;
+        omnivamp += item.stats.omnivamp ?? 0;
+        lifesteal += item.stats.lifesteal ?? 0;
+        healAndShieldPower += item.stats.healAndShieldPower ?? 0;
+        tenacity += item.stats.tenacity ?? 0;
+        bonusMs += item.stats.movementSpeed ?? 0;
     }
     const asGrowthFactor = (level - 1) * (0.7025 + 0.0175 * (level - 1));
     const totalBonusAs = (champion.baseStats.asPerLevel * asGrowthFactor) + bonusAtkSpeedPercent;
@@ -140,5 +150,10 @@ export function computeUnitStats(
         atkSpeed: computedAtkSpeed,
         critChance: Math.min(100, critChance),
         critDamage: 175 + bonusCritDamage,
+        omnivamp,
+        lifesteal,
+        healAndShieldPower,
+        tenacity,
+        movementSpeed: 340 + bonusMs
     };
 }
