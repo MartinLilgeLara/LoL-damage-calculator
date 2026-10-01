@@ -30,6 +30,8 @@ export const mockChampions: Champion[] = [
         {
             key: 'Q',
             name: 'Cull the Meek',
+            iconUrl: 'https://ddragon.leagueoflegends.com/cdn/14.20.1/img/spell/RenektonCleave.png',
+            description: 'Renekton swings his blade, dealing physical damage to all targets around him and healing for a portion of damage dealt. With 50+ Fury, damage and healing are greatly increased.',
             cooldown: [7, 7, 7, 7, 7],
             maxRank: 5,
             stages: [
@@ -54,6 +56,8 @@ export const mockChampions: Champion[] = [
         {
             key: 'W',
             name: 'Ruthless Predator',
+            iconUrl: 'https://ddragon.leagueoflegends.com/cdn/14.20.1/img/spell/RenektonPreExecute.png',
+            description: 'Renekton\'s next attack strikes twice, stunning the target for 0.75s. With 50+ Fury, he strikes 3 times instead, destroys damage shields, and stuns for 1.5s.',
             maxRank: 5,
             cooldown: [16,14,12,10,8],
             resetsAttackTimer: true,
@@ -105,8 +109,10 @@ export const mockChampions: Champion[] = [
         {
             key: 'E',
             name: 'Slice and Dice',
+            iconUrl: 'https://ddragon.leagueoflegends.com/cdn/14.20.1/img/spell/RenektonSliceAndDice.png',
+            description: 'Renekton dashes through enemies dealing physical damage. Hitting an enemy allows him to recast the dash within 4 seconds. With 50+ Fury, the recast deals bonus damage and reduces the Armor of units hit.',
             maxRank: 5,
-            cooldown: [16, 14, 12, 10, 8],
+            cooldown: [16, 14.5, 13, 11.5, 10],
             recastWindow: 4.0,
             maxCasts: 2,
             stages: [
@@ -142,6 +148,8 @@ export const mockChampions: Champion[] = [
         {
             key: 'R',
             name: 'Dominus',
+            iconUrl: 'https://ddragon.leagueoflegends.com/cdn/14.20.1/img/spell/RenektonReignOfTheTyrant.png',
+            description: 'Renekton transforms into the Tyrant form for 15 seconds, gaining bonus Health and generating Fury while dealing magic damage per second to nearby enemies.',
             maxRank: 3,
             cooldown: [120, 100, 80],
             stages: [
@@ -186,6 +194,8 @@ export const mockChampions: Champion[] = [
             {
                 key: 'Q',
                 name: 'Decisive Strike',
+                iconUrl: 'https://ddragon.leagueoflegends.com/cdn/14.20.1/img/spell/GarenQ.png',
+                description: 'Garen gains a burst of Move Speed, breaking free of all slows. His next attack strikes a vital area of his foe, dealing bonus physical damage and silencing them.',
                 maxRank: 5,
                 cooldown:[8,8,8,8,8],
                 appliesOnHit: true,
@@ -203,6 +213,8 @@ export const mockChampions: Champion[] = [
             {
                 key: 'E',
                 name: 'Judgment',
+                iconUrl: 'https://ddragon.leagueoflegends.com/cdn/14.20.1/img/spell/GarenE.png',
+                description: 'Garen rapidly spins his sword around his body for 3 seconds, dealing physical damage to nearby enemies with each spin. Champions hit by multiple spins lose Armor.',
                 maxRank: 5,
                 cooldown:[9,9,9,9,9],
                 stages: [
@@ -221,6 +233,8 @@ export const mockChampions: Champion[] = [
             {
                 key: 'R',
                 name: 'Demacian Justice',
+                iconUrl: 'https://ddragon.leagueoflegends.com/cdn/14.20.1/img/spell/GarenR.png',
+                description: 'Garen calls upon the might of Demacia to attempt to execute an enemy champion, dealing true damage equal to a base amount plus a percentage of the target\'s missing Health.',
                 maxRank: 3,
                 cooldown:[120,100,80],
                 stages: [

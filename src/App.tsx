@@ -38,6 +38,7 @@ export default function App() {
         attackerChamp,
         attackerStats,
         targetStats,
+        attackerItems,
         skillRanks,
         onLogBatch: pushCombatLogs,
     });

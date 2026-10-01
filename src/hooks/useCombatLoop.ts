@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import type { ComputedUnitStats, RecastStates, ActiveAttackEmpower, Champion, QueuedCombatHit } from '../types/game';
+import type { ComputedUnitStats, RecastStates, ActiveAttackEmpower, Champion, QueuedCombatHit, Item } from '../types/game';
 import type { SpellbladeBuff, AutoAttackResult } from '../engine/autoAttack';
 import {
     calculateHpRegen,
@@ -11,12 +11,14 @@ import {
     type ActiveDotInstance,
     type CombatCooldowns,
 } from '../engine/gameLoop';
+import { triggerAbilityHitItemDots } from '../engine/ItemsCalculator';
 import type { RawLogPayload } from './useCombatLog';
 
 interface CombatLoopProps {
     attackerChamp: Champion;
     attackerStats: ComputedUnitStats;
     targetStats: ComputedUnitStats;
+    attackerItems?: (Item | null)[];
     skillRanks: Record<string, number>;
     onLogBatch: (logs: RawLogPayload[]) => void;
 }
@@ -25,6 +27,7 @@ export function useCombatLoop({
                                   attackerChamp,
                                   attackerStats,
                                   targetStats,
+                                  attackerItems = [],
                                   skillRanks,
                                   onLogBatch,
                               }: CombatLoopProps) {
@@ -64,6 +67,11 @@ export function useCombatLoop({
     const targetHpRef = useRef<number>(targetCurrentHp);
     targetHpRef.current = targetCurrentHp;
     const lastTimeRef = useRef<number | null>(null);
+
+    const attackerItemsRef = useRef<(Item | null)[]>(attackerItems);
+    useEffect(() => {
+        attackerItemsRef.current = attackerItems;
+    }, [attackerItems]);
 
     const enqueueHits = useCallback((hits: QueuedCombatHit[]) => {
         setQueuedHits((prev) => [...prev, ...hits]);
@@ -166,6 +174,24 @@ export function useCombatLoop({
                         );
 
                         currentFrameDotDamage = totalDamage;
+
+                        // Se algum tick de habilidade de campeão causou dano neste frame, aplica/renova DoTs de itens (ex: Liandry)
+                        if (triggeredTicks.some((t) => t.isChampionAbility)) {
+                            const itemDots = triggerAbilityHitItemDots(attackerItemsRef.current);
+                            for (const itemDot of itemDots) {
+                                const existingIndex = nextDots.findIndex((d) => d.id === itemDot.id);
+                                if (existingIndex >= 0) {
+                                    // Renova a duração para o tempo integral mantendo o ritmo de contagem do próximo tick
+                                    nextDots[existingIndex] = {
+                                        ...nextDots[existingIndex],
+                                        durationRemaining: itemDot.durationRemaining,
+                                    };
+                                } else {
+                                    // Aplica pela primeira vez caso ainda não esteja ativo
+                                    nextDots.push(itemDot);
+                                }
+                            }
+                        }
 
                         if (triggeredTicks.length > 0) {
                             onLogBatch(

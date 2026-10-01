@@ -10,45 +10,46 @@ interface SkillStageCardProps {
 }
 
 export function SkillStageCard({
-                                   stage,
-                                   rank,
-                                   attackerStats,
-                                   targetStats,
-                                   targetCurrentHp,
-                               }: SkillStageCardProps) {
+    stage,
+    rank,
+    attackerStats,
+    targetStats,
+    targetCurrentHp,
+}: SkillStageCardProps) {
     const result = calculateEffectiveDamage(stage, rank, attackerStats, targetStats, targetCurrentHp);
 
-    const badgeColor =
+    const damageColor =
         result.damageType === 'magic'
-            ? 'text-cyan-400 bg-cyan-950/40 border-cyan-800'
+            ? 'text-cyan-300'
             : result.damageType === 'physical'
-                ? 'text-orange-400 bg-orange-950/40 border-orange-800'
-                : 'text-white bg-slate-800 border-slate-600';
+                ? 'text-orange-300'
+                : 'text-white';
+
+    const badgeBg =
+        result.damageType === 'magic'
+            ? 'bg-cyan-950/60 border-cyan-700/50 text-cyan-400'
+            : result.damageType === 'physical'
+                ? 'bg-orange-950/60 border-orange-700/50 text-orange-400'
+                : 'bg-slate-800/60 border-slate-600/50 text-white';
 
     const percentLost = ((result.effectiveDamage / targetStats.totalHp) * 100).toFixed(1);
+    const isDoT = stage.isOverTime === true;
 
     return (
-        <div className="p-3 bg-slate-950 border border-slate-800/80 rounded-lg space-y-2">
-            <div className="flex justify-between items-center text-xs">
-                <span className="font-medium text-slate-300">{stage.name}</span>
-                <span className={`px-1.5 py-0.5 rounded border text-[10px] uppercase font-bold ${badgeColor}`}>
-          {result.damageType}
-        </span>
+        <div className="flex items-center justify-between gap-3 py-1.5 px-2 rounded bg-black/20 border border-white/5">
+            <div className="flex items-center gap-2 min-w-0">
+                <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded border shrink-0 ${badgeBg}`}>
+                    {isDoT ? 'DoT' : result.damageType}
+                </span>
+                <span className="text-xs text-slate-400 truncate">{stage.name}</span>
             </div>
-
-            <div className="flex justify-between items-baseline pt-1">
-        <span className="text-xs text-slate-500">
-          Raw: <span className="text-slate-300 font-mono">{result.rawDamage}</span>
-        </span>
-                <div className="text-right">
-                    <span className="text-xs text-slate-400 mr-1">Effective:</span>
-                    <span className="text-xl font-bold font-mono text-emerald-400">
-            {result.effectiveDamage}
-          </span>
-                    <span className="text-[10px] text-slate-500 block">
-            (~{percentLost}% of target's HP)
-          </span>
-                </div>
+            <div className="text-right shrink-0">
+                <span className={`text-sm font-bold font-mono ${damageColor}`}>
+                    {result.effectiveDamage}
+                </span>
+                <span className="text-[10px] text-slate-500 ml-1">
+                    ({percentLost}% HP)
+                </span>
             </div>
         </div>
     );

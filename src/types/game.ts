@@ -88,6 +88,8 @@ export interface Skill{
     maxRank:number;
     cooldown:number[];
     stages:SkillStage[];
+    iconUrl?: string;
+    description?: string;
     recastWindow?: number;
     maxCasts?: number;
     resetsAttackTimer?: boolean;

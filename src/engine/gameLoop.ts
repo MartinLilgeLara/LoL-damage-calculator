@@ -81,6 +81,7 @@ export interface DotTickEvent {
     sourceName: string;
     damageAmount: number;
     damageType: DamageType;
+    isChampionAbility: boolean;
 }
 
 export interface ActiveDotInstance {
@@ -123,6 +124,7 @@ export function processActiveDots(
                 sourceName: dot.sourceName,
                 damageAmount: result.effectiveDamage,
                 damageType: dot.stage.damageType,
+                isChampionAbility: !dot.id.startsWith('item_'),
             });
 
             nextTickCountdown += dot.tickInterval;

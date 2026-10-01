@@ -169,8 +169,12 @@ export function executeAbilityCast(params: {
         });
     }
 
-    const itemDots = triggerAbilityHitItemDots(attackerItems);
-    dotsToPush.push(...itemDots);
+    // Passivas de itens de dano por habilidade (ex: Liandry) só disparam no cast se houver dano real imediato.
+    // Habilidades de dano contínuo (DoTs/canais como E do Garen) disparam/reaplicam conforme causam dano no loop.
+    if (totalDamage > 0 && !skill.empowersNextAttack) {
+        const itemDots = triggerAbilityHitItemDots(attackerItems);
+        dotsToPush.push(...itemDots);
+    }
 
     // 6. Recasts e Cooldowns
     const maxCasts = skill.maxCasts ?? 1;
