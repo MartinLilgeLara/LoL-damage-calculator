@@ -86,10 +86,12 @@ export function SkillCard({
         const percent = Math.round(ratioVal * 100);
 
         switch (s.attribute) {
+            case 'baseAd' :
+                return <span key={s.attribute} className={"text-orange-400 font-semibold"}>(+{percent}% baseAD)</span>;
             case 'totalAd':
                 return <span key={s.attribute} className="text-orange-400 font-semibold">(+{percent}% AD)</span>;
             case 'bonusAd':
-                return <span key={s.attribute} className="text-orange-400 font-semibold">(+{percent}% bAD)</span>;
+                return <span key={s.attribute} className="text-orange-400 font-semibold">(+{percent}% bonusAD)</span>;
             case 'ap':
                 return <span key={s.attribute} className="text-cyan-400 font-semibold">(+{percent}% AP)</span>;
             case 'totalHp':
@@ -199,7 +201,7 @@ export function SkillCard({
                             />
                             {/* Linha de Fórmula ao Estilo Tooltip do LoL */}
                             <div className="text-[11px] text-slate-400 px-2 py-1 bg-slate-950/60 rounded border border-slate-800/60 flex items-center gap-1.5 flex-wrap">
-                                <span className="text-slate-500 font-mono">Fórmula:</span>
+                                <span className="text-slate-500 font-mono">Formula:</span>
                                 <span className="text-slate-200 font-mono font-medium">{baseDamageVal}</span>
                                 {stage.scalings.map((scaling) => (
                                     <span key={scaling.attribute} className="font-mono">

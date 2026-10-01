@@ -1,4 +1,4 @@
-import type { ComputedUnitStats } from '../../types/game';
+import type { ComputedUnitStats, ActiveAttackEmpower } from '../../types/game';
 import { calculateEffectiveArmor } from '../../engine/mitigation';
 import type { SpellbladeBuff } from '../../engine/autoAttack';
 
@@ -8,6 +8,7 @@ interface AutoAttackCardProps {
     attackWindupRemaining: number;
     attackCooldownRemaining: number;
     spellblade?: SpellbladeBuff;
+    activeEmpower?: ActiveAttackEmpower | null;
     onAttack: () => void;
 }
 
@@ -17,6 +18,7 @@ export function AutoAttackCard({
                                    attackWindupRemaining,
                                    attackCooldownRemaining,
                                    spellblade,
+                                   activeEmpower,
                                    onAttack,
                                }: AutoAttackCardProps) {
     const isWindupActive = attackWindupRemaining > 0;
@@ -24,8 +26,8 @@ export function AutoAttackCard({
     const isDisabled = isWindupActive || attackCooldownRemaining > 0;
 
     const hasSpellbladeActive = Boolean(spellblade?.active && spellblade.extraDamage > 0);
+    const hasEmpowerActive = Boolean(activeEmpower && activeEmpower.durationRemaining > 0);
 
-    // Cálculo da armadura efetiva e redução percentual
     const effectiveArmor = calculateEffectiveArmor(attackerStats, targetStats);
     const damageMultiplier =
         effectiveArmor >= 0
@@ -39,9 +41,11 @@ export function AutoAttackCard({
     return (
         <div
             className={`bg-slate-900 border rounded-xl p-4 flex flex-col sm:flex-row justify-between sm:items-center gap-4 text-left transition-all ${
-                hasSpellbladeActive
-                    ? 'border-amber-500/80 shadow-[0_0_15px_rgba(245,158,11,0.15)] ring-1 ring-amber-500/50'
-                    : 'border-slate-800'
+                hasEmpowerActive
+                    ? 'border-red-500/80 shadow-[0_0_15px_rgba(239,68,68,0.25)] ring-1 ring-red-500/60'
+                    : hasSpellbladeActive
+                        ? 'border-amber-500/80 shadow-[0_0_15px_rgba(245,158,11,0.15)] ring-1 ring-amber-500/50'
+                        : 'border-slate-800'
             }`}
         >
             <div className="space-y-1.5">
@@ -51,12 +55,23 @@ export function AutoAttackCard({
                     </span>
                     <strong className="text-base text-slate-100">Basic Attack</strong>
 
-                    {/* Sinalizador Visual de Spellblade (Sheen / Lich Bane) */}
+                    {/* Active Empowered Attack Badge */}
+                    {hasEmpowerActive && (
+                        <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded font-mono text-[10px] font-bold uppercase bg-red-500/20 text-red-300 border border-red-500/50 animate-pulse">
+                            <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
+                            <span>
+                                {activeEmpower?.skillName} ({activeEmpower?.skillKey}) ACTIVE:{' '}
+                                {activeEmpower?.durationRemaining.toFixed(1)}s
+                            </span>
+                        </div>
+                    )}
+
+                    {/* Active Spellblade Badge */}
                     {hasSpellbladeActive && (
                         <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded font-mono text-[10px] font-bold uppercase bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse">
                             <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
                             <span>
-                                {spellblade?.sourceItemName} ON (+{spellblade?.extraDamage} raw):{' '}
+                                {spellblade?.sourceItemName} ACTIVE (+{spellblade?.extraDamage} raw):{' '}
                                 {spellblade?.durationRemaining.toFixed(1)}s
                             </span>
                         </div>
@@ -83,9 +98,14 @@ export function AutoAttackCard({
                             Crit: <span className="font-bold">{critEffectiveDmg}</span> ({attackerStats.critDamage}%)
                         </span>
                     )}
-                    {hasSpellbladeActive && (
+                    {hasEmpowerActive && (
+                        <span className="text-red-400 ml-2 font-bold animate-pulse">
+                            ⚔️ Next strike triggers {activeEmpower?.skillName}!
+                        </span>
+                    )}
+                    {!hasEmpowerActive && hasSpellbladeActive && (
                         <span className="text-amber-400 ml-2 font-medium">
-                            ⚡ Next strike is empowered!
+                            ⚡ Next strike is empowered by Spellblade!
                         </span>
                     )}
                 </p>
@@ -100,18 +120,22 @@ export function AutoAttackCard({
                         ? 'bg-amber-600 text-slate-950 animate-pulse'
                         : isDisabled
                             ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700 pointer-events-none'
-                            : hasSpellbladeActive
-                                ? 'bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-md shadow-amber-500/30 ring-2 ring-amber-400/60 animate-bounce'
-                                : 'bg-orange-600 hover:bg-orange-500 active:scale-95 text-slate-950 shadow-md shadow-orange-600/20'
+                            : hasEmpowerActive
+                                ? 'bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-600/40 ring-2 ring-red-400 animate-pulse'
+                                : hasSpellbladeActive
+                                    ? 'bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-md shadow-amber-500/30 ring-2 ring-amber-400/60 animate-bounce'
+                                    : 'bg-orange-600 hover:bg-orange-500 active:scale-95 text-slate-950 shadow-md shadow-orange-600/20'
                 }`}
             >
                 {isWindupActive
                     ? `Swinging (${attackWindupRemaining.toFixed(2)}s)...`
                     : isDisabled
                         ? `${attackCooldownRemaining.toFixed(2)}s`
-                        : hasSpellbladeActive
-                            ? '⚡ Sheen Attack'
-                            : '⚔️ Attack'}
+                        : hasEmpowerActive
+                            ? `⚔️ ${activeEmpower?.skillName}`
+                            : hasSpellbladeActive
+                                ? '⚡ Sheen Attack'
+                                : '⚔️ Attack'}
             </button>
         </div>
     );

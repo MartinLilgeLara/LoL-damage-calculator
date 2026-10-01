@@ -1,4 +1,4 @@
-import type { ComputedUnitStats, RecastStates, SkillStage } from '../types/game';
+import type {ComputedUnitStats, DamageType, RecastStates, SkillStage} from '../types/game';
 import { calculateEffectiveDamage } from './calculator';
 
 export interface CombatCooldowns {
@@ -77,6 +77,12 @@ export function calculateActualCooldown(baseCooldown:number, abilityHaste:number
     return Number((baseCooldown * hasteMultiplier).toFixed(2));
 }
 
+export interface DotTickEvent {
+    sourceName: string;
+    damageAmount: number;
+    damageType: DamageType;
+}
+
 export interface ActiveDotInstance {
     id: string; // Ex: "renekton_r_aura_sec"
     sourceName: string;
@@ -93,20 +99,17 @@ export function processActiveDots(
     attackerStats: ComputedUnitStats,
     targetStats: ComputedUnitStats,
     targetCurrentHp: number
-): { totalDamage: number; nextDots: ActiveDotInstance[] } {
+): { totalDamage: number; nextDots: ActiveDotInstance[]; triggeredTicks: DotTickEvent[] } {
     let totalDamage = 0;
     const nextDots: ActiveDotInstance[] = [];
+    const triggeredTicks: DotTickEvent[] = [];
 
     for (const dot of dots) {
         const nextDuration = dot.durationRemaining - deltaSeconds;
         let nextTickCountdown = dot.timeUntilNextTick - deltaSeconds;
 
-        if (nextDuration <= 0) {
-            // DoT expirou
-            continue;
-        }
-
-        while (nextTickCountdown <= 0) {
+        // Processa todos os ticks que venceram neste intervalo delta
+        while (nextTickCountdown <= 0.001) {
             const result = calculateEffectiveDamage(
                 dot.stage,
                 dot.rank,
@@ -114,16 +117,26 @@ export function processActiveDots(
                 targetStats,
                 Math.max(0, targetCurrentHp - totalDamage)
             );
+
             totalDamage += result.effectiveDamage;
+            triggeredTicks.push({
+                sourceName: dot.sourceName,
+                damageAmount: result.effectiveDamage,
+                damageType: dot.stage.damageType,
+            });
+
             nextTickCountdown += dot.tickInterval;
         }
 
-        nextDots.push({
-            ...dot,
-            durationRemaining: nextDuration,
-            timeUntilNextTick: nextTickCountdown,
-        });
+        // Só descarta o DoT se a duração terminou E já não há ticks pendentes
+        if (nextDuration > 0.001) {
+            nextDots.push({
+                ...dot,
+                durationRemaining: nextDuration,
+                timeUntilNextTick: nextTickCountdown,
+            });
+        }
     }
 
-    return { totalDamage, nextDots };
+    return { totalDamage, nextDots, triggeredTicks };
 }

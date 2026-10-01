@@ -183,3 +183,12 @@ export interface ActiveAttackEmpower {
     furyCost: number;
     durationRemaining: number; // Ex: 6s de janela ativa no LoL
 }
+export interface QueuedCombatHit {
+    id: string;
+    delayRemaining: number;
+    sourceName: string;
+    damageAmount: number;
+    damageType: DamageType;
+    isCritical?: boolean;
+    furyGain?: number;
+}
