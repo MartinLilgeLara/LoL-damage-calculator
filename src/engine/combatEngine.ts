@@ -155,7 +155,7 @@ export function executeAbilityCast(params: {
         });
     }
 
-    // 5. Início de DoTs (Nativos + Itens)
+    // 5. Início de DoTs Nativos
     const dotStages = skill.stages.filter((s) => s.isOverTime === true);
     for (const stage of dotStages) {
         dotsToPush.push({
@@ -169,14 +169,17 @@ export function executeAbilityCast(params: {
         });
     }
 
-    // Passivas de itens de dano por habilidade (ex: Liandry) só disparam no cast se houver dano real imediato.
-    // Habilidades de dano contínuo (DoTs/canais como E do Garen) disparam/reaplicam conforme causam dano no loop.
-    if (totalDamage > 0 && !skill.empowersNextAttack) {
+    // 6. Disparo Imediato de DoTs de Itens (ex: Liandry)
+    // Dispara no instante do cast se houver dano direto OU se a habilidade inicia um DoT contínuo
+    const hasInitialDamage = totalDamage > 0;
+    const hasNativeDoT = dotStages.length > 0;
+
+    if ((hasInitialDamage || hasNativeDoT) && !skill.empowersNextAttack) {
         const itemDots = triggerAbilityHitItemDots(attackerItems);
         dotsToPush.push(...itemDots);
     }
 
-    // 6. Recasts e Cooldowns
+    // 7. Recasts e Cooldowns
     const maxCasts = skill.maxCasts ?? 1;
     const activeRecast = currentRecasts[skillKey];
     const currentCast = activeRecast ? activeRecast.currentCast : 1;

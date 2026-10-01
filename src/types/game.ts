@@ -45,6 +45,19 @@ export type ItemStatKey =
     | 'tenacity'
     | 'movementSpeed';
 
+
+export type ItemCategory =
+    | 'Damage'
+    | 'Ability Power'
+    | 'Armor'
+    | 'Magic Resist'
+    | 'Health'
+    | 'Boots'
+    | 'Critical Strike'
+    | 'Attack Speed'
+    | 'Ability Haste';
+
+
 export type ScalingAttribute =
     | 'totalAd'
     | 'bonusAd'
@@ -188,6 +201,7 @@ export interface Item {
     name:string;
     cost:number;
     iconUrl?: string;
+    categories?: ItemCategory[];
     stats:Partial<Record<ItemStatKey,number>>;
     passives?:ItemPassive[]
 }

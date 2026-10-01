@@ -7,6 +7,7 @@ export const mockItems: Item[] = [
         name: "Liandry's Torment",
         cost: 3000,
         iconUrl: 'https://ddragon.leagueoflegends.com/cdn/14.20.1/img/item/6653.png',
+        categories: ['Ability Power', 'Health'],
         stats: { ap: 70, hp: 300 },
         passives: [
             {
@@ -26,6 +27,7 @@ export const mockItems: Item[] = [
         name: "Rabadon's Deathcap",
         cost: 3600,
         iconUrl: 'https://ddragon.leagueoflegends.com/cdn/14.20.1/img/item/3089.png',
+        categories: ['Ability Power'],
         stats: { ap: 140 },
         passives: [
             {
@@ -43,6 +45,7 @@ export const mockItems: Item[] = [
         name: "Luden's Companion",
         cost: 3000,
         iconUrl: 'https://ddragon.leagueoflegends.com/cdn/14.20.1/img/item/6655.png',
+        categories: ['Ability Power', 'Ability Haste'],
         stats: { ap: 90, haste: 20, flatMagicPen: 10 },
         passives: [
             {
@@ -62,6 +65,7 @@ export const mockItems: Item[] = [
         name: 'Lich Bane',
         cost: 3200,
         iconUrl: 'https://ddragon.leagueoflegends.com/cdn/14.20.1/img/item/3100.png',
+        categories: ['Ability Power', 'Ability Haste', 'Attack Speed'],
         stats: { ap: 100, haste: 15, bonusAtkSpeedPercent: 8 },
         passives: [
             {
@@ -84,6 +88,7 @@ export const mockItems: Item[] = [
         name: 'Void Staff',
         cost: 3000,
         iconUrl: 'https://ddragon.leagueoflegends.com/cdn/14.20.1/img/item/3135.png',
+        categories: ['Ability Power'],
         stats: { ap: 80, percentMagicPen: 40 },
     },
     {
@@ -91,6 +96,7 @@ export const mockItems: Item[] = [
         name: "Sorcerer's Shoes",
         cost: 1100,
         iconUrl: 'https://ddragon.leagueoflegends.com/cdn/14.20.1/img/item/3020.png',
+        categories: ['Boots', 'Ability Power'],
         stats: { flatMagicPen: 18, movementSpeed: 45 },
     },
 
@@ -100,6 +106,7 @@ export const mockItems: Item[] = [
         name: 'Sheen',
         cost: 900,
         iconUrl: 'https://ddragon.leagueoflegends.com/cdn/14.20.1/img/item/3057.png',
+        categories: ['Ability Haste'],
         stats: { haste: 10 },
         passives: [
             {
@@ -121,6 +128,7 @@ export const mockItems: Item[] = [
         name: 'Infinity Edge',
         cost: 3400,
         iconUrl: 'https://ddragon.leagueoflegends.com/cdn/14.20.1/img/item/3031.png',
+        categories: ['Damage', 'Critical Strike'],
         stats: {
             ad: 80,
             critChance: 25,
@@ -132,6 +140,7 @@ export const mockItems: Item[] = [
         name: "Lord Dominik's Regards",
         cost: 3000,
         iconUrl: 'https://ddragon.leagueoflegends.com/cdn/14.20.1/img/item/3036.png',
+        categories: ['Damage', 'Critical Strike'],
         stats: {
             ad: 45,
             critChance: 25,
@@ -145,6 +154,7 @@ export const mockItems: Item[] = [
         name: 'Sunfire Aegis',
         cost: 2700,
         iconUrl: 'https://ddragon.leagueoflegends.com/cdn/14.20.1/img/item/3068.png',
+        categories: ['Health', 'Armor'],
         stats: { hp: 500, armor: 50 },
         passives: [
             {
@@ -165,6 +175,7 @@ export const mockItems: Item[] = [
         name: 'Heartsteel',
         cost: 3000,
         iconUrl: 'https://ddragon.leagueoflegends.com/cdn/14.20.1/img/item/3084.png',
+        categories: ['Health'],
         stats: { hp: 900 },
         passives: [
             {
@@ -185,6 +196,7 @@ export const mockItems: Item[] = [
         name: 'Thornmail',
         cost: 2700,
         iconUrl: 'https://ddragon.leagueoflegends.com/cdn/14.20.1/img/item/3075.png',
+        categories: ['Armor', 'Health'],
         stats: { hp: 350, armor: 70 },
         passives: [
             {
@@ -204,6 +216,7 @@ export const mockItems: Item[] = [
         name: 'Spirit Visage',
         cost: 2900,
         iconUrl: 'https://ddragon.leagueoflegends.com/cdn/14.20.1/img/item/3065.png',
+        categories: ['Health', 'Magic Resist', 'Ability Haste'],
         stats: { hp: 450, mr: 60, haste: 10 },
     },
 ];

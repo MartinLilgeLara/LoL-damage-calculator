@@ -193,7 +193,12 @@ export function ChampionCardHUD({
                     </div>
 
                     {/* Inventory (6 Slots) */}
-                    <ItemSlots items={items} availableItems={availableItems} onItemChange={onItemChange} />
+                    <ItemSlots
+                        side={isAttacker ? 'left' : 'right'}
+                        items={items}
+                        availableItems={availableItems}
+                        onItemChange={onItemChange}
+                    />
                 </div>
             </div>
 

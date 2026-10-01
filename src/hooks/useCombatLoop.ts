@@ -145,9 +145,8 @@ export function useCombatLoop({
                         }
 
                         if (batchDamage > 0) {
-                            setTargetCurrentHp((currHp) =>
-                                Math.max(0, Number((currHp - batchDamage).toFixed(1)))
-                            );
+                            targetHpRef.current = Math.max(0, Number((targetHpRef.current - batchDamage).toFixed(1)));
+                            setTargetCurrentHp(targetHpRef.current);
                             setOutOfCombatTimer(0);
                         }
 
