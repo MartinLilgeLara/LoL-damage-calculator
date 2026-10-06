@@ -31,20 +31,16 @@ export function useCombatLoop({
                                   skillRanks,
                                   onLogBatch,
                               }: CombatLoopProps) {
-    // Estado de Vida Reativo para Ambos os Campeões
     const [attackerCurrentHp, setAttackerCurrentHp] = useState<number>(attackerStats.totalHp);
     const [targetCurrentHp, setTargetCurrentHp] = useState<number>(targetStats.totalHp);
 
-    // Recursos
     const [attackerResource, setAttackerResource] = useState<number>(0);
     const [targetResource, setTargetResource] = useState<number>(0);
 
-    // Controles do Motor
     const [isPaused, setIsPaused] = useState<boolean>(false);
     const [timeScale, setTimeScale] = useState<number>(1.0);
     const [outOfCombatTimer, setOutOfCombatTimer] = useState<number>(0);
 
-    // Estados de Combate
     const [cooldowns, setCooldowns] = useState<CombatCooldowns>({ Q: 0, W: 0, E: 0, R: 0 });
     const [recasts, setRecasts] = useState<RecastStates>({});
     const [activeDots, setActiveDots] = useState<ActiveDotInstance[]>([]);
@@ -68,6 +64,10 @@ export function useCombatLoop({
     targetHpRef.current = targetCurrentHp;
     const lastTimeRef = useRef<number | null>(null);
 
+    // Sincronização por Ref para o Loop nunca perder a fila
+    const queuedHitsRef = useRef<QueuedCombatHit[]>(queuedHits);
+    queuedHitsRef.current = queuedHits;
+
     const attackerItemsRef = useRef<(Item | null)[]>(attackerItems);
     useEffect(() => {
         attackerItemsRef.current = attackerItems;
@@ -77,7 +77,6 @@ export function useCombatLoop({
         setQueuedHits((prev) => [...prev, ...hits]);
     }, []);
 
-    // Sincronização inicial do atacante ao mudar de campeão ou totalHp
     useEffect(() => {
         setAttackerCurrentHp(attackerStats.totalHp);
         setAttackerResource(attackerStats.resourceType === 'fury' ? 0 : attackerStats.maxResource);
@@ -85,7 +84,6 @@ export function useCombatLoop({
         setOutOfCombatTimer(0);
     }, [attackerChamp.id, attackerStats.totalHp, attackerStats.maxResource, attackerStats.resourceType]);
 
-    // Sincronização inicial do alvo ao mudar de campeão ou totalHp
     useEffect(() => {
         setTargetCurrentHp(targetStats.totalHp);
         setTargetResource(targetStats.resourceType === 'fury' ? 0 : targetStats.maxResource);
@@ -120,14 +118,16 @@ export function useCombatLoop({
                         return nextDur <= 0 ? null : { ...prev, durationRemaining: nextDur };
                     });
 
-                    // 3. Processamento de Golpes Fatiados (Multi-Hit / Renekton W)
-                    if (queuedHits.length > 0) {
+                    // 3. Processamento de Golpes Fatiados (Multi-Hit / Renekton W) via REF
+                    if (queuedHitsRef.current.length > 0) {
+                        const currentQueue = queuedHitsRef.current;
                         const remainingHits: QueuedCombatHit[] = [];
                         const connectingHits: RawLogPayload[] = [];
                         let batchDamage = 0;
                         let furyEarned = 0;
+                        let hpHealedTotal = 0;
 
-                        for (const hit of queuedHits) {
+                        for (const hit of currentQueue) {
                             const nextDelay = hit.delayRemaining - effectiveDelta;
                             if (nextDelay <= 0) {
                                 batchDamage += hit.damageAmount;
@@ -137,8 +137,13 @@ export function useCombatLoop({
                                     effectiveDamage: hit.damageAmount,
                                     damageType: hit.damageType,
                                     isCritical: hit.isCritical,
+                                    healedAmount: hit.healedAmount,
+                                    note: hit.note,
                                 });
                                 if (hit.furyGain) furyEarned += hit.furyGain;
+                                if (hit.healedAmount && hit.healedAmount > 0) {
+                                    hpHealedTotal += hit.healedAmount;
+                                }
                             } else {
                                 remainingHits.push({ ...hit, delayRemaining: nextDelay });
                             }
@@ -148,6 +153,10 @@ export function useCombatLoop({
                             targetHpRef.current = Math.max(0, Number((targetHpRef.current - batchDamage).toFixed(1)));
                             setTargetCurrentHp(targetHpRef.current);
                             setOutOfCombatTimer(0);
+                        }
+
+                        if (hpHealedTotal > 0) {
+                            setAttackerCurrentHp((hp) => Math.min(attackerStats.totalHp, hp + hpHealedTotal));
                         }
 
                         if (furyEarned > 0 && attackerStats.resourceType === 'fury') {
@@ -161,7 +170,7 @@ export function useCombatLoop({
                         setQueuedHits(remainingHits);
                     }
 
-                    // 4. DoTs Ativos (Dano acumulado neste frame)
+                    // 4. DoTs Ativos
                     let currentFrameDotDamage = 0;
                     if (activeDots.length > 0) {
                         const { totalDamage, nextDots, triggeredTicks } = processActiveDots(
@@ -174,19 +183,16 @@ export function useCombatLoop({
 
                         currentFrameDotDamage = totalDamage;
 
-                        // Se algum tick de habilidade de campeão causou dano neste frame, aplica/renova DoTs de itens (ex: Liandry)
                         if (triggeredTicks.some((t) => t.isChampionAbility)) {
                             const itemDots = triggerAbilityHitItemDots(attackerItemsRef.current);
                             for (const itemDot of itemDots) {
                                 const existingIndex = nextDots.findIndex((d) => d.id === itemDot.id);
                                 if (existingIndex >= 0) {
-                                    // Renova a duração para o tempo integral mantendo o ritmo de contagem do próximo tick
                                     nextDots[existingIndex] = {
                                         ...nextDots[existingIndex],
                                         durationRemaining: itemDot.durationRemaining,
                                     };
                                 } else {
-                                    // Aplica pela primeira vez caso ainda não esteja ativo
                                     nextDots.push(itemDot);
                                 }
                             }
@@ -206,19 +212,17 @@ export function useCombatLoop({
                         setActiveDots(nextDots);
                     }
 
-                    // 5. REGENERAÇÃO DE VIDA CONTÍNUA PARA AMBOS OS CAMPEÕES
-                    // Aplica HP5 contínuo no Atacante
+                    // 5. HP5 contínuo
                     setAttackerCurrentHp((prevHp) =>
                         calculateHpRegen(prevHp, attackerStats, effectiveDelta)
                     );
 
-                    // Aplica DoTs (se houver) e HP5 contínuo no Alvo
                     setTargetCurrentHp((prevHp) => {
                         const hpAfterDots = Math.max(0, prevHp - currentFrameDotDamage);
                         return calculateHpRegen(hpAfterDots, targetStats, effectiveDelta);
                     });
 
-                    // 6. Regeneração e Decay de Recursos (Mana / Fúria)
+                    // 6. Regeneração de Recursos
                     setAttackerResource((prev) =>
                         calculateResourceTick(prev, attackerStats, effectiveDelta, outOfCombatTimer)
                     );
@@ -255,18 +259,49 @@ export function useCombatLoop({
                         if (next <= 0 && pendingAttackRef.current) {
                             const attack = pendingAttackRef.current;
                             setTargetCurrentHp((hp) => Math.max(0, Number((hp - attack.effectiveDamage).toFixed(1))));
+
+                            if (attack.healedAmount > 0) {
+                                setAttackerCurrentHp((hp) => Math.min(attackerStats.totalHp, hp + attack.healedAmount));
+                            }
                             setOutOfCombatTimer(0);
-                            onLogBatch([
-                                {
-                                    source: attack.spellbladeDamageApplied
-                                        ? `Basic Attack + ${attack.spellbladeDamageApplied.itemName}`
-                                        : 'Basic Attack',
-                                    rawDamage: attack.rawDamage + (attack.spellbladeDamageApplied?.raw ?? 0),
-                                    effectiveDamage: attack.effectiveDamage,
-                                    damageType: 'physical',
-                                    isCritical: attack.isCritical,
-                                },
-                            ]);
+
+                            const attackLogs: RawLogPayload[] = [];
+                            const baseEffectiveDmg = attack.mitigation.effectiveDamage;
+                            const notes: string[] = [];
+                            if (attack.spellbladeDamageApplied) notes.push(`+${attack.spellbladeDamageApplied.itemName} (${attack.spellbladeDamageApplied.effective})`);
+                            if (attack.onHitDamageApplied) notes.push(`+${attack.onHitDamageApplied.itemName} (${attack.onHitDamageApplied.effective})`);
+
+                            attackLogs.push({
+                                source: 'Basic Attack',
+                                rawDamage: attack.rawDamage,
+                                effectiveDamage: baseEffectiveDmg,
+                                damageType: 'physical',
+                                isCritical: attack.isCritical,
+                                healedAmount: attack.healedAmount > 0 ? attack.healedAmount : undefined,
+                                note: notes.length > 0 ? notes.join(' | ') : undefined,
+                            });
+
+                            if (attack.spellbladeDamageApplied) {
+                                attackLogs.push({
+                                    source: `${attack.spellbladeDamageApplied.itemName} (Spellblade)`,
+                                    rawDamage: attack.spellbladeDamageApplied.raw,
+                                    effectiveDamage: attack.spellbladeDamageApplied.effective,
+                                    damageType: attack.spellbladeDamageApplied.type,
+                                    note: 'Proc',
+                                });
+                            }
+
+                            if (attack.onHitDamageApplied) {
+                                attackLogs.push({
+                                    source: `${attack.onHitDamageApplied.itemName} (Colossal Consumption)`,
+                                    rawDamage: attack.onHitDamageApplied.raw,
+                                    effectiveDamage: attack.onHitDamageApplied.effective,
+                                    damageType: attack.onHitDamageApplied.type,
+                                    note: 'On-Hit',
+                                });
+                            }
+
+                            onLogBatch(attackLogs);
 
                             if (attackerStats.resourceType === 'fury') {
                                 setAttackerResource((fury) => Math.min(100, fury + 5));
@@ -283,7 +318,7 @@ export function useCombatLoop({
 
         frameId = requestAnimationFrame(loop);
         return () => cancelAnimationFrame(frameId);
-    }, [isPaused, timeScale, attackerStats, targetStats, outOfCombatTimer, skillRanks, activeDots, queuedHits, onLogBatch]);
+    }, [isPaused, timeScale, attackerStats, targetStats, outOfCombatTimer, skillRanks, activeDots, onLogBatch]);
 
     const resetCombat = () => {
         setAttackerCurrentHp(attackerStats.totalHp);

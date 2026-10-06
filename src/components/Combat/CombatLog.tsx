@@ -8,6 +8,9 @@ export interface CombatLogEntry {
     effectiveDamage: number;
     damageType: DamageType;
     isCritical?: boolean;
+    // >>> [HIGHLIGHT: CAMPOS NA ENTRADA DO LOG] <<<
+    healedAmount?: number;
+    note?: string;
 }
 
 interface CombatLogProps {
@@ -52,7 +55,6 @@ export function CombatLog({ entries, onClear }: CombatLogProps) {
                 </button>
             </div>
 
-            {/* Caixa com scroll para os registros */}
             <div className="max-h-36 overflow-y-auto space-y-1 pr-1 font-mono text-xs">
                 {entries.length === 0 ? (
                     <div className="text-slate-600 text-center py-3 text-[11px] font-sans">
@@ -64,7 +66,7 @@ export function CombatLog({ entries, onClear }: CombatLogProps) {
                             key={log.id}
                             className="flex justify-between items-center bg-slate-950/70 border border-slate-800/70 px-2.5 py-1 rounded text-[11px]"
                         >
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 flex-wrap">
                                 <span className="text-slate-500 text-[10px]">{log.timestamp}</span>
                                 <span className="text-slate-200 font-semibold">{log.source}</span>
                                 {log.isCritical && (
@@ -72,9 +74,22 @@ export function CombatLog({ entries, onClear }: CombatLogProps) {
                                         CRIT
                                     </span>
                                 )}
+
+                                {/* >>> [HIGHLIGHT: RENDERIZAÇÃO DA TAG / NOTA DO EFEITO] <<< */}
+                                {log.note && (
+                                    <span className="text-[9px] text-amber-300 bg-amber-950/60 border border-amber-700/60 px-1.5 py-0.2 rounded font-mono font-bold">
+                                        {log.note}
+                                    </span>
+                                )}
                             </div>
 
                             <div className="flex items-center gap-3">
+                                {/* >>> [HIGHLIGHT: RENDERIZAÇÃO DA TAG VERDE DE CURA] <<< */}
+                                {log.healedAmount !== undefined && log.healedAmount > 0 && (
+                                    <span className="text-emerald-300 font-mono text-[10px] font-bold">
+                                        +{log.healedAmount} HP
+                                    </span>
+                                )}
                                 <span className="text-slate-500 text-[10px]">
                                     Raw: <span className="text-slate-400">{log.rawDamage}</span>
                                 </span>

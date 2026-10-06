@@ -217,6 +217,6 @@ export const mockItems: Item[] = [
         cost: 2900,
         iconUrl: 'https://ddragon.leagueoflegends.com/cdn/14.20.1/img/item/3065.png',
         categories: ['Health', 'Magic Resist', 'Ability Haste'],
-        stats: { hp: 450, mr: 60, haste: 10 },
+        stats: { hp: 450, mr: 60, haste: 10, hpRegenPercent: 1.0 },
     },
 ];

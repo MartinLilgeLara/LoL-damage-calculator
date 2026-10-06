@@ -221,4 +221,6 @@ export interface QueuedCombatHit {
     damageType: DamageType;
     isCritical?: boolean;
     furyGain?: number;
+    healedAmount?: number;
+    note?: string;
 }

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { mockChampions } from './data/mockChampions';
 import { mockItems } from './data/mockItems';
 import { computeUnitStats, calculateEffectiveDamage } from './engine/calculator';
-import { calculateAttackTiming, calculateAutoAttackDamage } from './engine/autoAttack';
+import { calculateAttackTiming, calculateAutoAttackDamage, calculateItemOnHitDamage } from './engine/autoAttack';
 import { executeAbilityCast } from './engine/combatEngine';
 import { mitigateDamage } from './engine/mitigation';
 import { useCombatLog } from './hooks/useCombatLog';
@@ -44,21 +44,28 @@ export default function App() {
     });
 
     const handleTriggerAutoAttack = () => {
-        if (engine.attackCooldownRemaining > 0 || engine.attackWindupRemaining > 0) return;
+        // Se houver empower ativo de reset de timer, permite atacar mesmo com cooldown residual
+        if (!engine.activeEmpower) {
+            if (engine.attackCooldownRemaining > 0 || engine.attackWindupRemaining > 0) return;
+        }
 
         const timing = calculateAttackTiming(attackerStats.atkSpeed);
 
-        // Check if an Empowered Skill is queued (Renekton W or Garen Q)
+        // Disparo do ataque empoderado (Renekton W ou Garen Q)
         if (engine.activeEmpower) {
             const skill = attackerChamp.skills.find((s) => s.key === engine.activeEmpower?.skillKey);
             if (skill) {
                 const isFury = attackerStats.resourceType === 'fury';
-                const hasEmpFury = isFury && engine.activeEmpower.furyCost > 0;
-                const activeStages = skill.stages.filter((s) =>
-                    !skill.stages.some((st) => st.isEmpowered) ? true : hasEmpFury ? s.isEmpowered : !s.isEmpowered
-                );
 
-                // Multi-Hit Case (e.g. Renekton W: 2 hits normal, 3 hits empowered)
+                // >>> [CORREÇÃO: O golpe é empoderado se o buff foi ativado com fúria OU se o atacante tem 50+ de fúria] <<<
+                const isEmpoweredStrike = isFury && (engine.activeEmpower.furyCost >= 50 || engine.attackerResource >= 50);
+
+                const activeStages = skill.stages.filter((stage) => {
+                    if (stage.isEmpowered === undefined) return true;
+                    return isEmpoweredStrike ? stage.isEmpowered === true : stage.isEmpowered === false;
+                });
+
+                // Caso Multi-Hit (Renekton W: 2 hits normais ou 3 empoderados)
                 if (activeStages.length > 1) {
                     const hitsToQueue: QueuedCombatHit[] = activeStages.map((stage, idx) => {
                         const calculated = calculateEffectiveDamage(
@@ -70,6 +77,7 @@ export default function App() {
                         );
 
                         let extraSpellblade = 0;
+                        let spellbladeTag = '';
                         if (idx === 0 && engine.spellbladeState.active) {
                             const extraMit = mitigateDamage(
                                 engine.spellbladeState.extraDamage,
@@ -78,22 +86,43 @@ export default function App() {
                                 targetStats
                             );
                             extraSpellblade = extraMit.effectiveDamage;
+                            spellbladeTag = `+${engine.spellbladeState.sourceItemName} (${extraSpellblade})`;
                         }
+
+                        let onHitExtra = 0;
+                        let onHitTag = '';
+                        const onHitEffect = calculateItemOnHitDamage(attackerItems, attackerStats);
+                        if (onHitEffect && onHitEffect.rawExtra > 0) {
+                            const onHitMit = mitigateDamage(onHitEffect.rawExtra, onHitEffect.damageType, attackerStats, targetStats);
+                            onHitExtra = onHitMit.effectiveDamage;
+                            onHitTag = `+${onHitEffect.itemName} (${onHitExtra})`;
+                        }
+
+                        const totalEffectiveHit = calculated.effectiveDamage + extraSpellblade + onHitExtra;
+
+                        const healedAmount = attackerStats.lifesteal > 0 && stage.damageType === 'physical'
+                            ? Math.round(totalEffectiveHit * (attackerStats.lifesteal / 100))
+                            : 0;
+
+                        const activeNotes = [spellbladeTag, onHitTag].filter(Boolean).join(' | ');
 
                         return {
                             id: `${stage.id}_${Date.now()}_${idx}`,
-                            delayRemaining: idx * 0.1, // 100ms interval between strikes
-                            sourceName: `${skill.name} (Hit ${idx + 1}${hasEmpFury ? ' - Empowered' : ''})`,
-                            damageAmount: calculated.effectiveDamage + extraSpellblade,
+                            delayRemaining: idx * 0.1, // 0.1s entre cada golpe
+                            sourceName: `${skill.name} (Hit ${idx + 1}${isEmpoweredStrike ? ' - Empowered' : ''})`,
+                            damageAmount: totalEffectiveHit,
                             damageType: stage.damageType,
-                            furyGain: isFury && !hasEmpFury ? 5 : 0,
+                            furyGain: isFury && !isEmpoweredStrike ? 5 : 0,
+                            healedAmount,
+                            note: activeNotes || undefined,
                         };
                     });
 
                     engine.enqueueHits(hitsToQueue);
 
-                    if (engine.activeEmpower.furyCost > 0) {
-                        engine.setAttackerResource((f) => Math.max(0, f - engine.activeEmpower!.furyCost));
+                    // >>> [CORREÇÃO: Consome os 50 de fúria apenas agora, quando o ataque conecta!] <<<
+                    if (isEmpoweredStrike) {
+                        engine.setAttackerResource((f) => Math.max(0, f - 50));
                     }
 
                     if (engine.spellbladeState.active) {
@@ -101,12 +130,13 @@ export default function App() {
                     }
 
                     engine.setActiveEmpower(null);
-                    engine.setAttackWindupRemaining(0.08);
+                    engine.pendingAttackRef.current = null;
+                    engine.setAttackWindupRemaining(0);
                     engine.setAttackCooldownRemaining(timing.cycleTime);
-                    return; // CRITICAL: Stop here to prevent executing normal auto-attack damage
+                    return;
                 }
 
-                // Single Empowered Hit Case (e.g. Garen Q)
+                // Caso Empower de Golpe Único (ex: Garen Q)
                 const singleStage = activeStages[0];
                 if (singleStage) {
                     const res = calculateEffectiveDamage(
@@ -117,7 +147,13 @@ export default function App() {
                         engine.targetCurrentHp
                     );
 
-                    let attackResult = calculateAutoAttackDamage(attackerStats, targetStats, engine.spellbladeState);
+                    let attackResult = calculateAutoAttackDamage(
+                        attackerStats,
+                        targetStats,
+                        attackerItems,
+                        engine.spellbladeState
+                    );
+
                     attackResult = {
                         ...attackResult,
                         rawDamage: attackResult.rawDamage + res.rawDamage,
@@ -140,8 +176,14 @@ export default function App() {
             }
         }
 
-        // Standard Auto-Attack execution
-        const attackResult = calculateAutoAttackDamage(attackerStats, targetStats, engine.spellbladeState);
+        // Auto-Ataque Padrão
+        const attackResult = calculateAutoAttackDamage(
+            attackerStats,
+            targetStats,
+            attackerItems,
+            engine.spellbladeState
+        );
+
         if (engine.spellbladeState.active) {
             engine.setSpellbladeState((s) => ({ ...s, active: false, durationRemaining: 0 }));
         }
@@ -168,6 +210,7 @@ export default function App() {
             currentHp: engine.targetCurrentHp,
             currentResource: engine.attackerResource,
             spellbladeState: engine.spellbladeState,
+            currentActiveEmpower: engine.activeEmpower, // Passa o empower atual para ser preservado
         });
 
         if (result.shouldResetAttackTimer) {
@@ -177,6 +220,9 @@ export default function App() {
         }
 
         engine.setTargetCurrentHp(result.nextHp);
+        if (result.attackerHealedAmount > 0) {
+            engine.setAttackerCurrentHp((hp) => Math.min(attackerStats.totalHp, hp + result.attackerHealedAmount));
+        }
         engine.setAttackerResource(result.nextResource);
         engine.setCooldowns(result.nextCooldowns);
         engine.setRecasts(result.nextRecasts);
@@ -241,9 +287,8 @@ export default function App() {
                 }}
             />
 
-            {/* Mirrored Dual Champion Layout */}
+            {/* Layout dos Campeões */}
             <div className="max-w-6xl w-full grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Attacker (Left Side) */}
                 <ChampionCardHUD
                     role="attacker"
                     champion={attackerChamp}
@@ -264,7 +309,6 @@ export default function App() {
                     onHpChange={engine.setAttackerCurrentHp}
                 />
 
-                {/* Target (Right Side - Mirrored) */}
                 <ChampionCardHUD
                     role="target"
                     champion={targetChamp}
@@ -289,7 +333,7 @@ export default function App() {
             {/* Combat Log */}
             <CombatLog entries={combatLogs} onClear={clearCombatLogs} />
 
-            {/* Active DoT Badges */}
+            {/* Badges de DoT Ativos */}
             {engine.activeDots.length > 0 && (
                 <div className="max-w-6xl w-full flex flex-wrap gap-2">
                     {engine.activeDots.map((dot) => (
@@ -307,7 +351,7 @@ export default function App() {
                 </div>
             )}
 
-            {/* Combat Actions Section */}
+            {/* Seção de Ações */}
             <section className="max-w-6xl w-full space-y-4">
                 <AutoAttackCard
                     attackerStats={attackerStats}

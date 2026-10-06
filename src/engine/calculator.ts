@@ -68,6 +68,7 @@ export function computeUnitStats(
         champion.baseStats.resourceRegenPerLevel ?? 0,
         level
     );
+
     let baseResource = 0;
     if (resourceType === 'fury') {
         baseResource = 100;
@@ -78,6 +79,7 @@ export function computeUnitStats(
             level
         );
     }
+
     let bonusHp = 0;
     let bonusAd = 0;
     let bonusResource = 0;
@@ -97,6 +99,8 @@ export function computeUnitStats(
     let healAndShieldPower = 0;
     let tenacity = 0;
     let bonusMs = 0;
+    let totalHpRegenPercent = 0;
+
     for (const item of items) {
         if (!item) continue;
         bonusHp += item.stats.hp ?? 0;
@@ -118,6 +122,24 @@ export function computeUnitStats(
         healAndShieldPower += item.stats.healAndShieldPower ?? 0;
         tenacity += item.stats.tenacity ?? 0;
         bonusMs += item.stats.movementSpeed ?? 0;
+
+        // Se o valor for 1.0 (rácio) multiplica por 100, se for 100 soma diretamente
+        const itemRegen = item.stats.hpRegenPercent ?? 0;
+        totalHpRegenPercent += itemRegen <= 2.0 && itemRegen > 0 ? itemRegen * 100 : itemRegen;
+    }
+    const seenMultipliers = new Set<string>();
+    for (const item of items) {
+        if (!item?.passives) continue;
+        for (const passive of item.passives) {
+            if (passive.category === 'stat_multiplier') {
+                if (passive.unique && seenMultipliers.has(passive.id)) continue;
+                if (passive.unique) seenMultipliers.add(passive.id);
+
+                if (passive.stat === 'ap') {
+                    ap = Math.round(ap * (1 + passive.percent));
+                }
+            }
+        }
     }
     const asGrowthFactor = (level - 1) * (0.7025 + 0.0175 * (level - 1));
     const totalBonusAs = (champion.baseStats.asPerLevel * asGrowthFactor) + bonusAtkSpeedPercent;
@@ -125,12 +147,16 @@ export function computeUnitStats(
         (champion.baseStats.atkSpeed * (1 + totalBonusAs / 100)).toFixed(3)
     );
     const maxResource = resourceType === 'fury' ? 100 : Math.round(baseResource + bonusResource);
+
+    // Cálculo final: Regeneração Base + Percentagem Bónus dos Itens
+    const finalHpRegen = baseHpRegen * (1 + totalHpRegenPercent / 100);
+
     return {
         level,
         baseHp: Math.round(baseHp),
         bonusHp,
         totalHp: Math.round(baseHp + bonusHp),
-        hpRegen: Number(baseHpRegen.toFixed(2)),
+        hpRegen: Number(finalHpRegen.toFixed(2)), // Agora devolve o valor com os itens aplicados!
         resourceType,
         baseResource: Math.round(baseResource),
         bonusResource: resourceType === 'fury' ? 0 : bonusResource,

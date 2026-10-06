@@ -8,6 +8,9 @@ export interface RawLogPayload {
     effectiveDamage: number;
     damageType?: DamageType;
     isCritical?: boolean;
+    // >>> [HIGHLIGHT: CAMPOS PARA TAGS E CURA] <<<
+    healedAmount?: number;
+    note?: string;
 }
 
 export function useCombatLog() {
@@ -23,7 +26,7 @@ export function useCombatLog() {
             String(now.getMilliseconds()).padStart(3, '0').slice(0, 2);
 
         const newEntries: CombatLogEntry[] = logs
-            .filter((l) => l.effectiveDamage > 0)
+            .filter((l) => l.effectiveDamage > 0 || (l.healedAmount ?? 0) > 0)
             .map((l, index) => ({
                 id: `${Date.now()}_${Math.random()}_${index}`,
                 timestamp: baseTime,
@@ -32,6 +35,9 @@ export function useCombatLog() {
                 effectiveDamage: Math.round(l.effectiveDamage),
                 damageType: l.damageType ?? 'physical',
                 isCritical: l.isCritical ?? false,
+                // >>> [HIGHLIGHT: REPASSE DA TAG E DA CURA] <<<
+                healedAmount: l.healedAmount,
+                note: l.note,
             }));
 
         if (newEntries.length > 0) {

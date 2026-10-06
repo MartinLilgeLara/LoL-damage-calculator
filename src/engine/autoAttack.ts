@@ -8,7 +8,6 @@ export interface SpellbladeBuff {
     sourceItemName: string;
     damageType: DamageType;
     extraDamage: number;
-
 }
 
 export interface AutoAttackResult {
@@ -16,7 +15,16 @@ export interface AutoAttackResult {
     effectiveDamage: number;
     isCritical: boolean;
     mitigation: MitigationResult;
+    // >>> [HIGHLIGHT: CURA DE LIFESTEAL COMPUTADA NO GOLPE] <<<
+    healedAmount: number;
     spellbladeDamageApplied?: {
+        raw: number;
+        effective: number;
+        type: DamageType;
+        itemName: string;
+    };
+    // >>> [HIGHLIGHT: REGISTRO DE ON-HIT PROCESSADO (EX: HEARTSTEEL)] <<<
+    onHitDamageApplied?: {
         raw: number;
         effective: number;
         type: DamageType;
@@ -25,14 +33,10 @@ export interface AutoAttackResult {
 }
 
 export interface AttackTiming {
-    cycleTime: number;   // Tempo total entre ataques (1 / atkSpeed)
-    windupTime: number;  // Tempo até o golpe conectar
+    cycleTime: number;
+    windupTime: number;
 }
 
-/**
- * Calcula os tempos de windup e recuperação baseado no Attack Speed do campeão.
- * windupPercent padrão: ~0.20 (20% da animação para corpo a corpo).
- */
 export function calculateAttackTiming(
     atkSpeed: number,
     windupPercent: number = 0.20
@@ -46,6 +50,7 @@ export function calculateAttackTiming(
         windupTime: Number(windupTime.toFixed(3)),
     };
 }
+
 export function getSpellbladePassive(items: (Item | null)[], attacker: ComputedUnitStats) {
     for (const item of items) {
         if (!item?.passives) continue;
@@ -67,14 +72,37 @@ export function getSpellbladePassive(items: (Item | null)[], attacker: ComputedU
     }
     return null;
 }
-/**
- * Calcula o dano de um ataque básico, processando crítico e mitigação de armadura.
- * forceCrit pode ser usado para testes determinísticos caso necessário.
- */
+
+// >>> [HIGHLIGHT: NOVA FUNÇÃO DE RESOLUÇÃO ON-HIT (HEARTSTEEL, ETC)] <<<
+export function calculateItemOnHitDamage(items: (Item | null)[] = [], attacker: ComputedUnitStats) {
+    if (!Array.isArray(items)) return null; // <- Evita crash caso não seja passado um array
+
+    for (const item of items) {
+        if (!item?.passives) continue;
+        const onHitPassive = item.passives.find((p) => p.category === 'proc_damage' && p.trigger === 'on_hit');
+        if (onHitPassive && onHitPassive.category === 'proc_damage') {
+            let rawExtra = onHitPassive.baseDamage ?? 0;
+            for (const scaling of onHitPassive.scalings) {
+                const ratio = scaling.ratio[0] ?? 0;
+                if (scaling.attribute === 'bonusHp') rawExtra += attacker.bonusHp * ratio;
+                if (scaling.attribute === 'totalHp') rawExtra += attacker.totalHp * ratio;
+                if (scaling.attribute === 'bonusArmor') rawExtra += (attacker.armor - attacker.baseAd) * ratio;
+            }
+            return {
+                itemName: item.name,
+                damageType: onHitPassive.damageType,
+                rawExtra: Math.round(rawExtra),
+            };
+        }
+    }
+    return null;
+}
+
 export function calculateAutoAttackDamage(
     attacker: ComputedUnitStats,
     target: ComputedUnitStats,
-    spellbladeActiveBuff?: SpellbladeBuff | null,
+    items: (Item | null)[] = [],              // <-- 3º parâmetro agora é items!
+    spellbladeActiveBuff?: SpellbladeBuff | null, // <-- 4º parâmetro virou o spellblade!
     forceCrit?: boolean
 ): AutoAttackResult {
     const roll = Math.random() * 100;
@@ -89,8 +117,6 @@ export function calculateAutoAttackDamage(
     let totalEffectiveDamage = physicalMitigation.effectiveDamage;
 
     let spellbladeData: AutoAttackResult['spellbladeDamageApplied'] = undefined;
-
-    // Se houver Spellblade ativo, calcula e mitiga o dano adicional
     if (spellbladeActiveBuff?.active && spellbladeActiveBuff.extraDamage > 0) {
         const extraMit = mitigateDamage(
             spellbladeActiveBuff.extraDamage,
@@ -107,11 +133,32 @@ export function calculateAutoAttackDamage(
         };
     }
 
+    // >>> [HIGHLIGHT: PROCESSA ON-HIT SE EXISTIR (EX: HEARTSTEEL)] <<<
+    let onHitData: AutoAttackResult['onHitDamageApplied'] = undefined;
+    const onHitEffect = calculateItemOnHitDamage(items, attacker);
+    if (onHitEffect && onHitEffect.rawExtra > 0) {
+        const onHitMit = mitigateDamage(onHitEffect.rawExtra, onHitEffect.damageType, attacker, target);
+        totalEffectiveDamage += onHitMit.effectiveDamage;
+        onHitData = {
+            raw: onHitEffect.rawExtra,
+            effective: onHitMit.effectiveDamage,
+            type: onHitEffect.damageType,
+            itemName: onHitEffect.itemName,
+        };
+    }
+
+    // >>> [HIGHLIGHT: LIFESTEAL CURA SOBRE O DANO FÍSICO DO ATAQUE BÁSICO] <<<
+    const healedAmount = attacker.lifesteal > 0
+        ? Math.round(physicalMitigation.effectiveDamage * (attacker.lifesteal / 100))
+        : 0;
+
     return {
         rawDamage: Math.round(rawDamage),
         effectiveDamage: totalEffectiveDamage,
         isCritical,
         mitigation: physicalMitigation,
+        healedAmount,
         spellbladeDamageApplied: spellbladeData,
+        onHitDamageApplied: onHitData,
     };
 }
